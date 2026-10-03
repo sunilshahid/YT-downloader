@@ -141,9 +141,9 @@ npm run build
 ### 1. Modern Dashboard & Video Discovery
 A clean, dark-mode user interface featuring instant URL parsing, format inspection, download scheduling, incognito browsing, and fast search history.
 
-| Home Dashboard | Video & Audio Tabs | Codec & Quality Selection |
+| Home Dashboard | Downloads & Sub-Tabs | Codec & Quality Selection |
 | :---: | :---: | :---: |
-| ![Home Dashboard](screenshots/Home.png) | ![Tabs for Videos](screenshots/Tabs%20for%20Vidoes.png) | ![Quality & Codec](screenshots/Video%20Quality%20and%20Codec.png) |
+| ![Home Dashboard](screenshots/Home.png) | ![Downloads & Sub-Tabs](screenshots/Downloads.png) | ![Quality & Codec](screenshots/Video%20Quality%20and%20Codec.png) |
 
 ---
 
