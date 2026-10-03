@@ -41,8 +41,8 @@ echo please restart your computer once so Windows can boot with the hypervisor.
 echo.
 echo After restart:
 echo 1. Launch Docker Desktop
-echo 2. Run: docker build -t ytdl-downloader .
-echo 3. Run: docker run -d -p 8000:8000 --name ytdl-app ytdl-downloader
+echo 2. Run: docker build -t yt-downloader .
+echo 3. Run: docker run -d -p 8000:8000 --name yt-app yt-downloader
 echo =====================================================================
 echo.
 pause

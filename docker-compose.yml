@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ytdl-downloader
+    container_name: yt-downloader
     ports:
       - "8000:8000"
     volumes:

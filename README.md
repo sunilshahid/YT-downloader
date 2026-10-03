@@ -55,8 +55,8 @@ Make sure the following tools are installed on your system:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/sunilshahid/ytdl-downloader.git
-cd ytdl-downloader
+git clone https://github.com/sunilshahid/YT-downloader.git
+cd YT-downloader
 ```
 
 ---
@@ -94,15 +94,15 @@ docker compose up -d
 **Or using Docker CLI:**
 ```bash
 # Build the unified multi-stage image
-docker build -t ytdl-downloader .
+docker build -t yt-downloader .
 
 # Run container
 docker run -d \
-  --name ytdl-downloader \
+  --name yt-downloader \
   -p 8000:8000 \
   -v ./backend/data:/app/backend/data \
   -v ./Downloads:/downloads \
-  ytdl-downloader
+  yt-downloader
 ```
 
 Access the UI at: **`http://localhost:8000`**
@@ -205,7 +205,7 @@ Inspect live execution internals and keep your downloader up-to-date with upstre
 ## 🏗️ Architecture
 
 ```
-ytdl-downloader/
+YT-downloader/
 ├── backend/
 │   ├── main.py                  # FastAPI application & SPA static router
 │   ├── downloader.py            # yt-dlp wrapper, progress hooks & post-processors
@@ -262,17 +262,17 @@ YTDLnis Web includes an optimized, production-ready multi-stage Docker build tha
 Thanks to the included `.dockerignore` and layer caching, builds are fast and lightweight:
 
 ```bash
-docker build -t ytdl-downloader .
+docker build -t yt-downloader .
 ```
 
 ### 2. Run the Container
 ```bash
 docker run -d \
-  --name ytdl-downloader \
+  --name yt-downloader \
   -p 8000:8000 \
   -v ./backend/data:/app/backend/data \
   -v ./Downloads:/downloads \
-  ytdl-downloader
+  yt-downloader
 ```
 
 Access the full stack web application at: **http://localhost:8000**
