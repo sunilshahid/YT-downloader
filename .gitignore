@@ -1,0 +1,62 @@
+# ====================================================================
+# Git Ignore for YTDLnis Web
+# ====================================================================
+
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.gemini/
+
+# Archived Reference Repositories & Scratch Documents
+others/
+
+# Node & Frontend Dependencies (do NOT commit node_modules)
+frontend/node_modules/
+frontend/.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python Virtual Environments & Bytecode
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Media Downloads & Temporary Part Files
+Downloads/
+downloads/
+*.mp4
+*.m4a
+*.webm
+*.mkv
+*.mp3
+*.opus
+*.part
+*.ytdl
+
+# Application Runtime Staging, Logs & User Data
+backend/data/staging/
+backend/data/logs/
+backend/data/search_history.json
+backend/data/download_history.json
+backend/data/cookies.txt
+*.log
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local

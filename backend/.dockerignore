@@ -1,0 +1,9 @@
+venv/
+.venv/
+**/__pycache__/
+**/*.py[cod]
+data/staging/
+data/logs/
+data/*.json
+data/*.txt
+*.log

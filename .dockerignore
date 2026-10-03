@@ -1,0 +1,40 @@
+# Version Control & IDE
+.git
+.gitignore
+.github
+.vscode
+.idea
+.gemini
+
+# Reference repositories & extra documents (prevent uploading gigabytes of external code)
+others/
+ytdlnis/
+flow/
+newtube/
+screenshots/
+
+# Python cache & virtual environments
+backend/venv/
+backend/.venv/
+**/__pycache__/
+**/*.py[cod]
+*$py.class
+backend/data/staging/
+backend/data/logs/
+backend/data/*.json
+backend/data/*.txt
+*.log
+
+# Frontend build cache & dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.npm/
+
+# Download outputs
+Downloads/
+downloads/
+*.mp4
+*.m4a
+*.webm
+*.part
+*.ytdl

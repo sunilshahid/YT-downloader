@@ -1,0 +1,15 @@
+services:
+  # Unified Full-Stack Container (FastAPI + Built React SPA + yt-dlp + FFmpeg + aria2)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ytdl-downloader
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/backend/data
+      - ./Downloads:/downloads
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
