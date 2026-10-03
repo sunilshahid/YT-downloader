@@ -19,9 +19,10 @@
   <p align="center">
     <a href="#quick-start">Quick Start</a> •
     <a href="#key-features">Key Features</a> •
-    <a href="#screenshots-walkthrough">Screenshots</a> •
+    <a href="#screenshots">Screenshots</a> •
     <a href="#architecture">Architecture</a> •
     <a href="#configuration">Configuration</a> •
+    <a href="#docker">Docker</a> •
     <a href="#troubleshooting">Troubleshooting</a>
   </p>
 
@@ -29,7 +30,8 @@
 
 ---
 
-## 🌟 Highlights
+<a id="key-features"></a>
+## 🌟 Key Features & Highlights
 
 - **⚡ Full-Stack in One Command**: Run the entire application (FastAPI backend + optimized production React SPA) with a single command: `python main.py`.
 - **✂️ Visual Video Trimming (Cut)**: Interactive range scrubbing, multi-segment time slicing, and dual mode operation (keep selected slices or cut out intervals).
@@ -43,6 +45,7 @@
 
 ---
 
+<a id="quick-start"></a>
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -136,6 +139,8 @@ npm run build
 
 ---
 
+<a id="screenshots"></a>
+<a id="screenshots-walkthrough"></a>
 ## 📸 Screenshots Walkthrough
 
 ### 1. Modern Dashboard & Video Discovery
@@ -202,6 +207,7 @@ Inspect live execution internals and keep your downloader up-to-date with upstre
 
 ---
 
+<a id="architecture"></a>
 ## 🏗️ Architecture
 
 ```
@@ -236,6 +242,7 @@ YT-downloader/
 
 ---
 
+<a id="configuration"></a>
 ## ⚙️ Configuration & Settings
 
 The settings panel allows you to customize every aspect of your downloading pipeline:
@@ -254,6 +261,8 @@ The settings panel allows you to customize every aspect of your downloading pipe
 
 ---
 
+<a id="docker"></a>
+<a id="docker-deployment"></a>
 ## 🐳 Docker & Container Deployment
 
 YTDLnis Web includes an optimized, production-ready multi-stage Docker build that bundles the built React frontend, FastAPI backend, FFmpeg, aria2, and Node.js into a single unified container.
@@ -292,6 +301,7 @@ On Windows, Docker Desktop utilizes WSL2. A lightweight setup has been pre-confi
 
 ---
 
+<a id="troubleshooting"></a>
 ## ❓ Troubleshooting
 
 ### 1. HTTP 403 Forbidden on YouTube Downloads
@@ -313,6 +323,7 @@ On Windows, Docker Desktop utilizes WSL2. A lightweight setup has been pre-confi
 
 ---
 
+<a id="license"></a>
 ## 📄 License
 
 This project is open-source and available under the [MIT License](LICENSE).
