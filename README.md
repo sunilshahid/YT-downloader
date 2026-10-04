@@ -56,30 +56,34 @@ Make sure the following tools are installed on your system:
 - **FFmpeg**: Required for audio extraction, muxing, cropping, and thumbnail embedding ([Download FFmpeg](https://ffmpeg.org/download.html))
 - *(Optional)* **aria2c**: Required if you enable multi-connection accelerated downloading
 
-### 1. Clone the Repository
+### Choose Your Way to Run
 
-```bash
-git clone https://github.com/sunilshahid/YT-downloader.git
-cd YT-downloader
-```
+You can run the full-stack application (React UI + FastAPI + yt-dlp) in two easy ways:
 
----
-
-### 2. Choose Your Way to Run
-
-You can run the entire full-stack application (React UI + FastAPI + yt-dlp) in two easy ways:
-
-#### ⚡ Option A: Native Python (Single Command)
+#### ⚡ Option A: Native Python (Virtual Environment)
 
 FastAPI serves the pre-built React frontend and all API/WebSocket endpoints together:
 
 ```bash
-# 1. Install Python dependencies
+# 1. Clone the repository and enter directory
+git clone https://github.com/sunilshahid/YT-downloader.git
+cd YT-downloader
+
+# 2. Create and activate a Python virtual environment
+# Linux / macOS / Ubuntu VPS:
+python3 -m venv venv
+source venv/bin/activate
+
+# Windows (PowerShell):
+# python -m venv venv
+# .\venv\Scripts\Activate.ps1
+
+# 3. Install Python dependencies
 pip install -r backend/requirements.txt
 
-# 2. Run the application
+# 4. Run the full-stack application
 cd backend
-python main.py
+python main.py # or python3 main.py on Linux
 ```
 
 Access the UI at: **`http://localhost:8000`**
