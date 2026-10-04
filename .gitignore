@@ -33,7 +33,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
-dist/
+backend/dist/
+!frontend/dist/
 build/
 
 # Media Downloads & Temporary Part Files
