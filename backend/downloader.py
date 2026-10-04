@@ -2513,6 +2513,10 @@ def generate_ytdlp_cli_command(opts: dict, clean_url: str, request: DownloadRequ
         cmd_args.append("--force-ipv4")
     if opts.get("geo_bypass"):
         cmd_args.append("--geo-bypass")
+    if opts.get("impersonate"):
+        imp_target = str(opts["impersonate"])
+        if imp_target and imp_target.lower() != "none":
+            cmd_args.extend(["--impersonate", imp_target])
     if opts.get("http_headers", {}).get("User-Agent"):
         cmd_args.extend(["--user-agent", f'"{opts["http_headers"]["User-Agent"]}"'])
 
@@ -2652,6 +2656,7 @@ def log_session_header(download_id: str, request: DownloadRequest, settings: App
         f"  - Cookies State  : {cookie_str}",
         f"  - PO Token Bypass: {po_summary}",
         f"  - Client Rotation: {clients_str}",
+        f"  - Impersonation  : {str(opts.get('impersonate')) if opts.get('impersonate') else 'Disabled'}",
         f"  - Network Route  : {proxy_str} | Geo-Bypass: {geo_bypass_str}",
         f"[CONFIG] Feature Toggles   :",
         f"  - Metadata Tagging : {embed_meta}",
