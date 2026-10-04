@@ -89,11 +89,17 @@ Access the UI at: **`http://localhost:8000`**
 
 ---
 
-#### 🐳 Option B: Docker (Pre-Built Container)
+<a id="docker"></a>
+<a id="docker-deployment"></a>
+#### 🐳 Option B: Docker Deployment (Recommended)
 
-Run everything inside an optimized, production-ready container with FFmpeg, aria2, **Deno**, and Node.js pre-installed:
+Run everything inside an optimized, production-ready container bundling the built React frontend, FastAPI backend, FFmpeg, aria2, **Deno** (official JS challenge engine), and Node.js pre-installed:
 
-##### 1. Using Docker Compose (Recommended)
+> [!TIP]
+> **🚀 Out-of-the-Box Anti-Bot Bypass:**
+> The Docker container comes pre-configured with **Deno**, **yt-dlp-ejs**, and **Chrome TLS Impersonation** (`curl_cffi`). When paired with your cookies, downloads in **4K (2160p), 1440p, 1080p, VP9, and AV1** succeed right out of the box!
+
+##### 1. Using Docker Compose (Fastest & Easiest)
 
 Create a folder, create `docker-compose.yml` with `nano`, paste the configuration, and launch:
 
@@ -126,8 +132,9 @@ Start the container in the background:
 docker compose up -d
 ```
 
-##### 2. Or Single-Command Docker Run
+##### 2. Single-Command Docker Run
 
+If you prefer running a single container without creating a compose file:
 ```bash
 docker run -d \
   --name yt-downloader \
@@ -138,7 +145,33 @@ docker run -d \
   sunilshahid/yt-downloader:latest
 ```
 
-Access the UI at: **`http://localhost:8000`**
+Access the UI at: **`http://localhost:8000`** *(or `http://YOUR_SERVER_IP:8000`)*
+
+##### 3. Build from Source Locally (Optional)
+
+If you made modifications and wish to build your own local Docker image from the cloned repository:
+```bash
+# 1. Build the production multi-stage image
+docker build -t yt-downloader:latest .
+
+# 2. Run your locally built image
+docker run -d \
+  --name yt-downloader \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v ./data:/app/backend/data \
+  -v ./downloads:/downloads \
+  yt-downloader:latest
+```
+
+##### 4. 🪟 Windows & Lightweight WSL2 Setup
+
+On Windows, Docker Desktop utilizes WSL2. A lightweight setup has been pre-configured in this repository:
+1. **Lightweight Resource Limits (`.wslconfig`)**: Limits memory to 2GB and 2 CPUs so your host system never slows down.
+2. **1-Click Virtualization & WSL Setup**:
+   - Right-click `setup-wsl-docker.bat` and select **"Run as administrator"**.
+   - It enables Windows Virtual Machine Platform and installs Debian (lightweight distro, ~80MB).
+   - If prompted, restart your PC once so Windows loads the hypervisor, then launch Docker Desktop!
 
 > [!WARNING]
 > **⚠️ Running on a Cloud VPS / Datacenter (Hetzner, DigitalOcean, AWS, OVH, Contabo, etc.)?**
@@ -295,94 +328,6 @@ The settings panel allows you to customize every aspect of your downloading pipe
 
 ---
 
-<a id="docker"></a>
-<a id="docker-deployment"></a>
-## 🐳 Docker & Container Deployment
-
-YTDL Downloader includes an optimized, production-ready multi-stage Docker build that bundles the built React frontend, FastAPI backend, FFmpeg, aria2, **Deno** (official JS challenge engine), and **Node.js** into a single unified container.
-
-> [!TIP]
-> **🚀 Out-of-the-Box Anti-Bot Bypass:**
-> The Docker container comes pre-configured with **Deno**, **yt-dlp-ejs**, and **Chrome TLS Impersonation** (`curl_cffi`). When paired with your cookies, downloads in **4K (2160p), 1440p, 1080p, VP9, and AV1** succeed right out of the box!
-
-### 1. Using Docker Compose (Recommended)
-
-You can launch the entire stack in seconds using Docker Compose:
-
-```bash
-# 1. Create a directory for YTDL Downloader
-mkdir yt-downloader && cd yt-downloader
-
-# 2. Create the docker-compose.yml file
-nano docker-compose.yml
-```
-
-Paste the following configuration:
-```yaml
-services:
-  app:
-    image: sunilshahid/yt-downloader:latest
-    container_name: yt-downloader
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./data:/app/backend/data
-      - ./downloads:/downloads
-```
-
-> **To save and exit in nano:** Press `Ctrl + O`, hit `Enter`, then press `Ctrl + X`.
-
-Start the container in the background:
-```bash
-docker compose up -d
-```
-
-### 2. Single-Command Docker Run
-If you prefer running a single container without a compose file:
-```bash
-docker run -d \
-  --name yt-downloader \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -v ./data:/app/backend/data \
-  -v ./downloads:/downloads \
-  sunilshahid/yt-downloader:latest
-```
-
-Access the web interface at: **`http://localhost:8000`** *(or `http://YOUR_SERVER_IP:8000`)*
-
----
-
-### 3. Build & Push to Docker Hub (From Source)
-If you made modifications and want to build and publish your own image:
-```bash
-# 1. Build the production multi-stage image
-docker build -t sunilshahid/yt-downloader:latest .
-
-# 2. Test locally
-docker run -d \
-  --name yt-downloader \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -v ./data:/app/backend/data \
-  -v ./downloads:/downloads \
-  sunilshahid/yt-downloader:latest
-
-# 3. Log in and push to Docker Hub
-docker login
-docker push sunilshahid/yt-downloader:latest
-```
-
-### 🪟 Windows & Lightweight WSL2 Setup
-On Windows, Docker Desktop utilizes WSL2. A lightweight setup has been pre-configured:
-1. **Lightweight Resource Limits (`.wslconfig`)**: Limits memory to 2GB and 2 CPUs so your host system never slows down.
-2. **1-Click Virtualization & WSL Setup**:
-   - Right-click `setup-wsl-docker.bat` and select **"Run as administrator"**.
-   - It enables Windows Virtual Machine Platform and installs Debian (lightweight distro, ~80MB).
-   - If prompted, restart your PC once so Windows loads the hypervisor, then launch Docker Desktop!
-
----
 
 <a id="warnings-and-troubleshooting"></a>
 <a id="troubleshooting"></a>
