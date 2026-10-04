@@ -1,5 +1,5 @@
 # ====================================================================
-# Unified Production Multi-Stage Dockerfile for YTDLnis Web
+# Unified Production Multi-Stage Dockerfile for YTDL Downloader
 # ====================================================================
 
 # ── Stage 1: Build Frontend (Lightweight Node Alpine) ────────────────
@@ -24,7 +24,7 @@ ENV PYTHONUNBUFFERED=1 \
 # Install system dependencies required for media processing and yt-dlp:
 # - ffmpeg: audio/video multiplexing, cropping, cutting, stream merging
 # - aria2: multi-connection high-speed download accelerator
-# - nodejs: JavaScript challenge / n-sig cipher execution for yt-dlp
+# - nodejs: JavaScript runtime fallback for yt-dlp
 # - ca-certificates: TLS/SSL certs for HTTPS extraction
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -34,6 +34,9 @@ RUN apt-get update && \
         ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Copy prebuilt official Deno binary (primary recommended JS runtime for yt-dlp)
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
 
 WORKDIR /app
 

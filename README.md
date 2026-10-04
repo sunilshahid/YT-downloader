@@ -19,6 +19,7 @@
   <p align="center">
     <a href="#quick-start">Quick Start</a> •
     <a href="#key-features">Key Features</a> •
+    <a href="#cookies-and-anti-bot">Cookies & Anti-Bot Guide</a> •
     <a href="#screenshots">Screenshots</a> •
     <a href="#architecture">Architecture</a> •
     <a href="#configuration">Configuration</a> •
@@ -275,21 +276,88 @@ The settings panel allows you to customize every aspect of your downloading pipe
 
 ---
 
+<a id="cookies-and-anti-bot"></a>
+## 🍪 Cookies, Proof of Origin (PO Token) & Account Safety Guide
+
+YouTube aggressively restricts cloud VPS and datacenter IP addresses (Hetzner, DigitalOcean, AWS, OVH, Contabo, etc.) with BotGuard bot checks (*"Sign in to confirm you're not a bot"*), SABR streaming locks, and JavaScript cipher challenges.
+
+With **YTDL Downloader**, you can bypass these hurdles completely to download videos in **4K (2160p), 1440p, 1080p, VP9, AV1, and high-bitrate audio**.
+
+---
+
+### ⚠️ CRITICAL WARNING: Account Safety & Ban Prevention
+
+> [!CAUTION]
+> **DO NOT USE YOUR PRIMARY PERSONAL OR SENSITIVE GOOGLE ACCOUNT FOR MASS AUTOMATED DOWNLOADING!**
+> 
+> When you export session cookies from a personal Google account and use them on a cloud server/VPS:
+> - If you download hundreds of videos in bulk or trigger rate limits, Google's automated anti-abuse algorithms may flag the activity as automated scraping.
+> - **Potential Risks:** Temporary session revocation, mandatory CAPTCHA challenges, or in severe cases of automated abuse, **suspension/blocking of your Google account**.
+> 
+> #### 🛡️ Recommended Best Practices:
+> 1. **Option A: Use Guest / Incognito Cookies (Zero Account Risk & Longest Lasting)**:
+>    - Open an **Incognito / Private browser window** where you are **not** logged into any Google account.
+>    - Go to [youtube.com](https://www.youtube.com).
+>    - Export cookies (these contain only `VISITOR_INFO1_LIVE`, `YSC`, `PREF`).
+>    - Because these are unauthenticated guest cookies, there is **zero risk to your personal Google account**, and Google will **never rotate or revoke `*PSIDTS` tokens**. These cookies last for months!
+> 2. **Option B: Use a Dedicated Throwaway / Secondary Google Account**:
+>    - Create a secondary Google account specifically for downloading.
+>    - Log in to that account on a dedicated browser profile that you do not actively use for daily browsing.
+>    - Export those cookies when downloading age-restricted or member-only videos.
+
+---
+
+### 📥 Step-by-Step: How to Export Cookies (Netscape Format)
+
+1. **Install a Cookie Exporter Extension** in your browser:
+   - [Cookie-Editor](https://cookie-editor.com/) (Chrome, Firefox, Edge, Safari)
+   - or [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+2. **Open YouTube** ([youtube.com](https://www.youtube.com)):
+   - Browse in Incognito for risk-free guest cookies, or log in with your dedicated secondary account.
+3. **Export Cookies**:
+   - Click the extension icon in your browser toolbar.
+   - Click **Export** &rarr; select **Export as Netscape** (or click "Export" in *Get cookies.txt LOCALLY*).
+   - This copies a text block starting with `# Netscape HTTP Cookie File` to your clipboard.
+4. **Import into YTDL Downloader**:
+   - In the YTDL Downloader web interface, go to **Settings &rarr; Cookies & Accounts**.
+   - Make sure **Enable Cookies** is toggled **ON**.
+   - Click **Add Site Cookie**, select `youtube.com`, paste the Netscape cookie text into the box, and click **Save**.
+
+---
+
+### 🛡️ Step-by-Step: Extracting Proof of Origin (`visitor_data`)
+
+YouTube requires a genuine `visitor_data` context to serve high-resolution 4K/1080p stream URLs without forcing SABR playback restrictions.
+
+1. **Open YouTube in Chrome / Edge**:
+   - Go to [youtube.com](https://www.youtube.com).
+2. **Open Developer Tools**:
+   - Press `F12` (or `Ctrl+Shift+I`), and switch to the **Console** tab.
+3. **Copy Your Visitor Data**:
+   - Type or paste the following command into the Console and press **Enter**:
+     ```javascript
+     copy(ytcfg.get("VISITOR_DATA"))
+     ```
+   - This instantly copies your exact, full `visitor_data` string (starting with `Cgt...`) directly to your clipboard without truncation.
+4. **Save in YTDL Downloader**:
+   - In YTDL Downloader, navigate to **Settings &rarr; Proof of Origin (PO Token)**.
+   - Toggle **Enable Proof of Origin** to **ON**.
+   - Under Mode, select **Manual**.
+   - Paste your `visitor_data` into the **Visitor Data** field.
+   - Click **Save Settings**.
+   - *(Note: A single `visitor_data` string remains valid for weeks or months—you do not need to update it every time!)*
+
+---
+
 <a id="docker"></a>
 <a id="docker-deployment"></a>
 ## 🐳 Docker & Container Deployment
 
-YTDLnis Web includes an optimized, production-ready multi-stage Docker build that bundles the built React frontend, FastAPI backend, FFmpeg, aria2, and Node.js into a single unified container.
+YTDL Downloader includes an optimized, production-ready multi-stage Docker build that bundles the built React frontend, FastAPI backend, FFmpeg, aria2, **Deno** (official JS challenge engine), and **Node.js** into a single unified container.
 
-> [!WARNING]
-> **⚠️ Cloud VPS & Datacenter Hosting Warning (YouTube BotGuard Wall):**
-> If you host this container on a cloud VPS / datacenter IP (Hetzner, DigitalOcean, AWS, OVH, Linode, Contabo, etc.), YouTube will block unauthenticated requests with:
-> `Sign in to confirm you’re not a bot`.
-> 
-> **How to bypass on a server:**
-> 1. **🍪 Import Cookies (Recommended & 100% Reliable):** Log in to YouTube in your browser, export your cookies in Netscape format (using *Get cookies.txt LOCALLY* or *Cookie-Editor*), and paste them into **Settings &rarr; Cookies & Accounts**.
-> 2. **🛡️ Chrome TLS Impersonation:** Built-in and active by default (`curl_cffi` mimics Google Chrome TLS/JA3 signatures to prevent fingerprint mismatch).
-> 3. **🤖 PO Token Companion (Optional):** Run the companion container `brainicism/bgutil-ytdlp-pot-provider:latest` on the same network to automatically mint Proof of Origin tokens on your VPS.
+> [!TIP]
+> **🚀 Out-of-the-Box Bot Bypass:**
+> The Docker container comes pre-configured with **Deno**, **yt-dlp-ejs**, and **Chrome TLS Impersonation** (`curl_cffi`). When paired with your cookies and `visitor_data`, downloads in 4K/1080p succeed straight away without manual server tweaking!
 
 ### 1. Pull & Run from Docker Hub (Recommended)
 No local build required:
@@ -308,14 +376,16 @@ docker run -d \
 ### 2. Using Docker Compose
 You can run the application with a single command using `docker-compose.yml`:
 ```bash
-# Pulls sunilshahid/yt-downloader:latest and starts the stack
 docker compose up -d
 ```
 
-### 3. Build Locally from Source (Optional)
-If you made custom changes and want to build the Docker image yourself:
+### 3. Build & Push to Docker Hub (From Source)
+If you made changes and want to build and publish your own image:
 ```bash
+# 1. Build the production multi-stage image
 docker build -t sunilshahid/yt-downloader:latest .
+
+# 2. Test locally
 docker run -d \
   --name yt-downloader \
   --restart unless-stopped \
@@ -323,6 +393,10 @@ docker run -d \
   -v ./backend/data:/app/backend/data \
   -v ./Downloads:/downloads \
   sunilshahid/yt-downloader:latest
+
+# 3. Log in and push to Docker Hub
+docker login
+docker push sunilshahid/yt-downloader:latest
 ```
 
 Access the full stack web application at: **http://localhost:8000**
