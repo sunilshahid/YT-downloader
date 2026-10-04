@@ -89,10 +89,16 @@ Access the UI at: **`http://localhost:8000`**
 
 Run everything inside a self-contained container with FFmpeg, aria2, and Node.js pre-installed:
 
+> [!WARNING]
+> **⚠️ Cloud VPS & Datacenter Hosting Warning:**
+> YouTube aggressively blocks datacenter / cloud VPS IPs (Hetzner, DigitalOcean, AWS, OVH, Contabo, etc.) with BotGuard challenges (*"Sign in to confirm you're not a bot"*).
+> - **Solution:** Export your YouTube cookies from your browser (using *Get cookies.txt LOCALLY*) and import them under **Settings &rarr; Cookies & Accounts**. Chrome TLS impersonation is enabled by default to keep the session authenticated.
+
 **1. Run Directly from Docker Hub (Fastest — No Build Needed):**
 ```bash
 docker run -d \
   --name yt-downloader \
+  --restart unless-stopped \
   -p 8000:8000 \
   -v ./backend/data:/app/backend/data \
   -v ./Downloads:/downloads \
@@ -104,15 +110,16 @@ docker run -d \
 docker compose up -d
 ```
 
-**3. Or Build Locally with Docker CLI:**
+**3. Or Build Locally from Source:**
 ```bash
-docker build -t yt-downloader .
+docker build -t sunilshahid/yt-downloader:latest .
 docker run -d \
   --name yt-downloader \
+  --restart unless-stopped \
   -p 8000:8000 \
   -v ./backend/data:/app/backend/data \
   -v ./Downloads:/downloads \
-  yt-downloader
+  sunilshahid/yt-downloader:latest
 ```
 
 Access the UI at: **`http://localhost:8000`**
@@ -274,29 +281,51 @@ The settings panel allows you to customize every aspect of your downloading pipe
 
 YTDLnis Web includes an optimized, production-ready multi-stage Docker build that bundles the built React frontend, FastAPI backend, FFmpeg, aria2, and Node.js into a single unified container.
 
-### 1. Build the Unified Image
-Thanks to the included `.dockerignore` and layer caching, builds are fast and lightweight:
+> [!WARNING]
+> **⚠️ Cloud VPS & Datacenter Hosting Warning (YouTube BotGuard Wall):**
+> If you host this container on a cloud VPS / datacenter IP (Hetzner, DigitalOcean, AWS, OVH, Linode, Contabo, etc.), YouTube will block unauthenticated requests with:
+> `Sign in to confirm you’re not a bot`.
+> 
+> **How to bypass on a server:**
+> 1. **🍪 Import Cookies (Recommended & 100% Reliable):** Log in to YouTube in your browser, export your cookies in Netscape format (using *Get cookies.txt LOCALLY* or *Cookie-Editor*), and paste them into **Settings &rarr; Cookies & Accounts**.
+> 2. **🛡️ Chrome TLS Impersonation:** Built-in and active by default (`curl_cffi` mimics Google Chrome TLS/JA3 signatures to prevent fingerprint mismatch).
+> 3. **🤖 PO Token Companion (Optional):** Run the companion container `brainicism/bgutil-ytdlp-pot-provider:latest` on the same network to automatically mint Proof of Origin tokens on your VPS.
 
+### 1. Pull & Run from Docker Hub (Recommended)
+No local build required:
 ```bash
-docker build -t yt-downloader .
-```
+docker pull sunilshahid/yt-downloader:latest
 
-### 2. Run the Container
-```bash
 docker run -d \
   --name yt-downloader \
+  --restart unless-stopped \
   -p 8000:8000 \
   -v ./backend/data:/app/backend/data \
   -v ./Downloads:/downloads \
-  yt-downloader
+  sunilshahid/yt-downloader:latest
+```
+
+### 2. Using Docker Compose
+You can run the application with a single command using `docker-compose.yml`:
+```bash
+# Pulls sunilshahid/yt-downloader:latest and starts the stack
+docker compose up -d
+```
+
+### 3. Build Locally from Source (Optional)
+If you made custom changes and want to build the Docker image yourself:
+```bash
+docker build -t sunilshahid/yt-downloader:latest .
+docker run -d \
+  --name yt-downloader \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v ./backend/data:/app/backend/data \
+  -v ./Downloads:/downloads \
+  sunilshahid/yt-downloader:latest
 ```
 
 Access the full stack web application at: **http://localhost:8000**
-
-### 3. Docker Compose (One-Command Startup)
-```bash
-docker compose up -d
-```
 
 ### 🪟 Windows & Lightweight WSL2 Setup
 On Windows, Docker Desktop utilizes WSL2. A lightweight setup has been pre-configured:

@@ -1,11 +1,34 @@
+# ==============================================================================
+# 🐳 YTDL Downloader - Docker Compose Configuration
+# Official Docker Hub Image: sunilshahid/yt-downloader:latest
+# ==============================================================================
+#
+# ⚠️ IMPORTANT VPS / CLOUD HOSTING WARNING:
+# YouTube aggressively monitors and challenges datacenter / cloud VPS IP ranges
+# (Hetzner, DigitalOcean, AWS, OVH, Linode, Contabo, etc.) with BotGuard verification:
+# "Sign in to confirm you’re not a bot".
+#
+# HOW TO BYPASS ON A VPS / SERVER:
+# 1. 🍪 Import Cookies (Recommended & 100% Reliable):
+#    Export your YouTube account cookies from your browser (Netscape format) using
+#    "Get cookies.txt LOCALLY" and paste them into Web UI -> Settings -> Cookies & Accounts.
+# 2. 🛡️ Chrome TLS Impersonation:
+#    Kept enabled by default in our container via curl_cffi to mimic genuine Chrome
+#    TLS/JA3 signatures.
+# 3. 🤖 Optional PO Token Companion:
+#    Uncomment the 'bgutil-pot-provider' companion service below to automatically
+#    mint genuine YouTube BotGuard PO tokens on your VPS.
+# ==============================================================================
+
 services:
-  # Unified Full-Stack Container (FastAPI + Built React SPA + yt-dlp + FFmpeg + aria2)
+  # Unified Full-Stack Application (FastAPI + React UI + yt-dlp + FFmpeg + aria2 + curl_cffi)
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: sunilshahid/yt-downloader:latest
     container_name: yt-downloader
+    # To build locally from source instead of pulling from Docker Hub, uncomment below:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
@@ -14,3 +37,16 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # (Optional Companion) YouTube Proof of Origin (PO Token) Daemon
+  # Uncomment this service if you want automated BotGuard PO Token generation
+  # on your VPS. In the Web UI Settings -> PO Token, set URL to: http://bgutil-pot-provider:4416
+  # ----------------------------------------------------------------------------
+  # bgutil-pot-provider:
+  #   image: brainicism/bgutil-ytdlp-pot-provider:latest
+  #   container_name: bgutil-pot-provider
+  #   ports:
+  #     - "4416:4416"
+  #   restart: unless-stopped
+
