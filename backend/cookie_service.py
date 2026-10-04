@@ -138,7 +138,17 @@ def verify_site_cookie(site_id: str) -> Tuple[bool, str]:
         "no_warnings": True,
         "skip_download": True,
         "cookiefile": tmp_path,
+        "extractor_args": {
+            "youtube": ["player_client=android,mweb,web"]
+        }
     }
+    impersonate_target = getattr(settings, "impersonate_target", None) or "chrome"
+    if impersonate_target and str(impersonate_target).lower() != "none":
+        try:
+            from yt_dlp.networking.impersonate import ImpersonateTarget
+            ydl_opts["impersonate"] = ImpersonateTarget.from_str(impersonate_target)
+        except Exception:
+            pass
     
     error_msg = "Cookie validation failed."
     for test_url in test_urls:
