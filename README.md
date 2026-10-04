@@ -8,8 +8,8 @@
   [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](#prerequisites)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#backend)
   [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#frontend)
-  [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](#frontend)
-  [![yt-dlp](https://img.shields.io/badge/Engine-yt--dlp-red?style=for-the-badge&logo=youtube&logoColor=white)](https://github.com/yt-dlp/yt-dlp)
+  [![Docker Hub](https://img.shields.io/badge/Docker_Hub-sunilshahid%2Fyt--downloader-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/sunilshahid/yt-downloader)
+  [![Build & Push](https://github.com/sunilshahid/YT-downloader/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/sunilshahid/YT-downloader/actions/workflows/docker-publish.yml)
   [![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](#license)
 
   <p align="center">
@@ -85,21 +85,28 @@ Access the UI at: **`http://localhost:8000`**
 
 ---
 
-#### 🐳 Option B: Docker / Docker Compose
+#### 🐳 Option B: Docker (Pre-Built or Local Build)
 
 Run everything inside a self-contained container with FFmpeg, aria2, and Node.js pre-installed:
 
-**Using Docker Compose:**
+**1. Run Directly from Docker Hub (Fastest — No Build Needed):**
+```bash
+docker run -d \
+  --name yt-downloader \
+  -p 8000:8000 \
+  -v ./backend/data:/app/backend/data \
+  -v ./Downloads:/downloads \
+  sunilshahid/yt-downloader:latest
+```
+
+**2. Or Using Docker Compose:**
 ```bash
 docker compose up -d
 ```
 
-**Or using Docker CLI:**
+**3. Or Build Locally with Docker CLI:**
 ```bash
-# Build the unified multi-stage image
 docker build -t yt-downloader .
-
-# Run container
 docker run -d \
   --name yt-downloader \
   -p 8000:8000 \
