@@ -37,6 +37,7 @@
   "proxy_url": null,
   "socks5_proxy": "",
   "custom_user_agent": null,
+  "impersonate_target": "chrome",
   "socket_timeout": 30,
   "geo_bypass": true,
   "geo_bypass_country": null,

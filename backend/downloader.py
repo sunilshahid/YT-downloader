@@ -1646,7 +1646,7 @@ def fetch_formats_sync(url: str) -> VideoInfo:
             fb_opts["ignoreerrors"] = False
             fb_args = dict(fb_opts.get("extractor_args", {}))
             fb_args["youtube"] = [
-                "player_client=android,mweb,web"
+                "player_client=ios,android,mweb,web"
             ]
             fb_opts["extractor_args"] = fb_args
             try:
@@ -1743,7 +1743,7 @@ def _apply_js_engine(opts: dict, settings: AppSettings):
         opts["extractor_args"] = {}
 
     youtube_args = [
-        "player_client=android,mweb,web,tv_embedded"
+        "player_client=ios,android,mweb,web,tv_embedded"
     ]
     if engine:
         youtube_args.append(f"js_engine={engine}")
