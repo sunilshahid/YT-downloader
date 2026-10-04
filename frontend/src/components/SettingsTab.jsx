@@ -1728,6 +1728,29 @@ export default function SettingsTab({
         ),
       },
       {
+        id: 'impersonate_target',
+        tab: 'network',
+        category: 'Network & Proxy',
+        title: 'Browser Impersonation (TLS Fingerprint)',
+        desc: 'Mimic browser TLS/JA3 fingerprints via curl-cffi to evade datacenter IP bot detection',
+        keywords: 'impersonate browser tls ja3 fingerprint curl_cffi bot anti-bot datacenter vps',
+        render: () => (
+          <SelectField
+            label="Browser Impersonation"
+            description="Mimic authentic browser TLS fingerprints via curl-cffi"
+            value={settings?.impersonate_target || 'chrome'}
+            onChange={(v) => updateSetting('impersonate_target', v)}
+            options={[
+              { label: 'Chrome (Recommended - TLS matching)', value: 'chrome' },
+              { label: 'Safari (Apple WebKit TLS)', value: 'safari' },
+              { label: 'Edge (Microsoft Edge TLS)', value: 'edge' },
+              { label: 'Disabled (Raw Python urllib)', value: 'none' },
+            ]}
+            icon={Shield}
+          />
+        ),
+      },
+      {
         id: 'socket_timeout',
         tab: 'network',
         category: 'Network & Proxy',
@@ -3156,6 +3179,21 @@ export default function SettingsTab({
             </div>
           </div>
         </SettingsRow>
+
+        <SelectField
+          id="setting-impersonate_target"
+          label="Browser Impersonation (TLS Anti-Bot)"
+          description="Mimics real browser TLS signatures (JA3/JA4) via curl-cffi to bypass Datacenter/VPS IP blocks"
+          value={settings?.impersonate_target || 'chrome'}
+          onChange={(v) => updateSetting('impersonate_target', v)}
+          options={[
+            { label: 'Chrome (Recommended - Real Browser TLS Fingerprint)', value: 'chrome' },
+            { label: 'Safari (Apple WebKit TLS Fingerprint)', value: 'safari' },
+            { label: 'Edge (Microsoft Edge TLS Fingerprint)', value: 'edge' },
+            { label: 'Disabled (Raw Python requests)', value: 'none' },
+          ]}
+          icon={Shield}
+        />
 
         <ToggleSwitch
           id="setting-geo_bypass"

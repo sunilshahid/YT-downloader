@@ -273,6 +273,7 @@ class AppSettings(BaseModel):
     proxy_url: Optional[str] = None
     socks5_proxy: Optional[str] = None  # Backward-compatible alias
     custom_user_agent: Optional[str] = None
+    impersonate_target: Optional[str] = "chrome"  # Spoofs real browser TLS fingerprint via curl_cffi
     socket_timeout: int = Field(default=30, ge=5)
     geo_bypass: bool = True
     geo_bypass_country: Optional[str] = None

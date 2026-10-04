@@ -325,17 +325,33 @@ def apply_po_token_args(opts: Dict[str, Any], settings: Any) -> Dict[str, Any]:
     gvs_token = getattr(po_cfg, "gvs_token", "") or ""
     visitor_data = getattr(po_cfg, "visitor_data", "") or ""
 
+    def is_valid_pot(tok: str) -> bool:
+        if not tok or not str(tok).strip():
+            return False
+        t = str(tok).strip()
+        if t.startswith("guest_") or t.startswith("auth_") or "mock" in t.lower():
+            return False
+        return len(t) > 15
+
+    def is_valid_visitor(vis: str) -> bool:
+        if not vis or not str(vis).strip():
+            return False
+        v = str(vis).strip()
+        if "Cgt_auth_" in v or "Cgtguest_" in v:
+            return False
+        return len(v) > 10
+
     po_tokens = []
     for client in clients:
-        if gvs_token.strip():
+        if is_valid_pot(gvs_token):
             po_tokens.append(f"{client}.gvs+{gvs_token.strip()}")
-        if player_token.strip():
+        if is_valid_pot(player_token):
             po_tokens.append(f"{client}.player+{player_token.strip()}")
 
     youtube_args = []
     
     # Client priority list
-    if use_only_po and (player_token or gvs_token):
+    if use_only_po and po_tokens:
         # When 'use only PO token' is active, prioritize web/mweb and restrict fallback
         youtube_args.append(f"player_client={','.join(clients)}")
     else:
@@ -344,7 +360,7 @@ def apply_po_token_args(opts: Dict[str, Any], settings: Any) -> Dict[str, Any]:
     if po_tokens:
         youtube_args.append(f"po_token={','.join(po_tokens)}")
 
-    if visitor_data.strip():
+    if is_valid_visitor(visitor_data):
         youtube_args.append(f"visitor_data={visitor_data.strip()}")
 
     # Preserve JS engine if already present

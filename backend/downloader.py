@@ -1606,6 +1606,15 @@ def fetch_formats_sync(url: str) -> VideoInfo:
         
     if getattr(settings, "prefer_insecure", False):
         ydl_opts["prefer_insecure"] = True
+
+    # Browser TLS Impersonation (Bypasses BotGuard fingerprinting on Datacenter/VPS IPs)
+    impersonate_target = getattr(settings, "impersonate_target", None) or "chrome"
+    if impersonate_target and str(impersonate_target).lower() != "none":
+        try:
+            from yt_dlp.networking.impersonate import ImpersonateTarget
+            ydl_opts["impersonate"] = ImpersonateTarget.from_str(impersonate_target)
+        except Exception as e:
+            logger.debug(f"Failed to apply impersonate target in format fetch: {e}")
     
     logger.info(f"Fetching formats for normalized URL: {clean_url}")
     
@@ -1888,11 +1897,11 @@ def _build_ydl_opts(
 
     # Spoofing / Impersonation (Anti-bot)
     # Note: On Windows Python 3.13 curl_cffi impersonate target can raise RuntimeError; only set if explicitly supported
-    impersonate_target = getattr(settings, "impersonate_target", None)
-    if impersonate_target:
+    impersonate_target = getattr(settings, "impersonate_target", None) or "chrome"
+    if impersonate_target and str(impersonate_target).lower() != "none":
         try:
             from yt_dlp.networking.impersonate import ImpersonateTarget
-            opts["impersonate"] = ImpersonateTarget(client=impersonate_target)
+            opts["impersonate"] = ImpersonateTarget.from_str(impersonate_target)
         except Exception:
             pass
 
