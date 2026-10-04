@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 import os
 from typing import Optional, List, Dict, Union, Any
 from enum import Enum
@@ -119,6 +119,8 @@ AdvancedOptions = AdvancedDownloadOptions
 
 class DownloadRequest(BaseModel):
     """Request to start a download."""
+    model_config = ConfigDict(extra="allow")
+
     url: str
     video_format_id: Optional[str] = None  # None for audio-only
     audio_format_id: Optional[str] = None  # None for video-only
@@ -127,6 +129,7 @@ class DownloadRequest(BaseModel):
     embed_lyrics: bool = True # If true, fetch and embed synced lyrics
     scheduled_for: Optional[str] = None # ISO format timestamp for future download
     title: Optional[str] = None
+    artist: Optional[str] = None
     thumbnail: Optional[str] = None
     embed_metadata_override: Optional[bool] = None
     embed_subtitles_override: Optional[bool] = None
@@ -159,10 +162,14 @@ class DownloadStatusEnum(str, Enum):
 
 class DownloadStatus(BaseModel):
     """Real-time status of a download."""
+    model_config = ConfigDict(extra="allow")
+
     id: str
     url: str
     title: Optional[str] = None
     thumbnail: Optional[str] = None
+    uploader: Optional[str] = None
+    artist: Optional[str] = None
     duration: Optional[float] = None
     status: DownloadStatusEnum = DownloadStatusEnum.QUEUED
     percent: float = 0.0

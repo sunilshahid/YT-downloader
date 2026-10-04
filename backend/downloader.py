@@ -20,7 +20,7 @@ from typing import Dict, Optional, Callable, Any, List, Set, Union
 
 import yt_dlp
 import mutagen
-from mutagen.id3 import USLT, SYLT, TIT2, TPE1, TALB, TDRC, APIC, TCON, TCOM, COMM
+from mutagen.id3 import USLT, SYLT, TIT2, TPE1, TALB, TDRC, APIC, TCON, TCOM, COMM, TPE2, TRCK
 
 try:
     import syncedlyrics
@@ -880,49 +880,216 @@ def get_all_downloads() -> Dict[str, DownloadStatus]:
 
 
 def clean_search_query(name: str) -> str:
-    """Clean filename/title for high-accuracy iTunes metadata and lyrics API queries."""
+    """Clean filename/title for high-accuracy iTunes metadata and lyrics API queries without losing artist context."""
     if not name:
         return ""
     clean = os.path.splitext(name)[0]
-    clean = re.sub(r'\(From.*?\)', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'\(Movie.*?\)', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'\(Official.*?\)', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'\(Lyrical.*?\)', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'\(Video.*?\)', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'\(Audio.*?\)', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'\(\d+\)', '', clean)
-    clean = clean.split('｜')[0]
-    clean = clean.split('|')[0]
-    return clean.strip()
+    # Remove bracketed/parenthetical clutter
+    clean = re.sub(r'\[.*?\]', ' ', clean)
+    clean = re.sub(r'\(.*?(?:official|video|audio|lyric|from|movie|4k|hd|remix|full|visualizer).*?\)', ' ', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\(\d+\)', ' ', clean)
+    # Remove clutter phrases
+    clean = re.sub(r'\b(?:official\s+(?:video|audio|music\s+video)|lyric\s+video|full\s+video|visualizer|4k|hd|hq)\b', ' ', clean, flags=re.IGNORECASE)
+    # Replace delimiter symbols with space rather than truncating title
+    clean = re.sub(r'[|｜•·/]+', ' ', clean)
+    clean = re.sub(r'\s+', ' ', clean).strip()
+    return clean
 
 
-def fetch_auto_metadata(query: str) -> Optional[dict]:
-    """Fetch official song metadata (Title, Artist, Album, Release Year) from iTunes Search API."""
+def fetch_auto_metadata(
+    query: str,
+    expected_artist: Optional[str] = None,
+    expected_title: Optional[str] = None
+) -> Optional[dict]:
+    """
+    Fetch official song metadata (Title, Artist, Album, Release Year) from iTunes Search API.
+    Performs strict artist and title verification to prevent cross-artist false matches.
+    """
     if not query:
         return None
     try:
         clean_q = clean_search_query(query)
-        url = f"https://itunes.apple.com/search?term={urllib.parse.quote(clean_q)}&media=music&entity=song&limit=1"
+        if expected_artist and expected_artist.strip():
+            clean_art = clean_search_query(expected_artist)
+            if clean_art.lower() not in clean_q.lower():
+                clean_q = f"{clean_art} {clean_q}"
+
+        url = f"https://itunes.apple.com/search?term={urllib.parse.quote(clean_q)}&media=music&entity=song&limit=5"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=5) as response:
             data = json.loads(response.read().decode())
-            if data.get('resultCount', 0) > 0:
-                track = data['results'][0]
-                artwork_url = track.get('artworkUrl100', '')
+            results = data.get('results', [])
+            if not results:
+                return None
+
+            matched_track = None
+            if expected_artist and expected_artist.strip():
+                exp_art_norm = re.sub(r'[^a-z0-9]', '', expected_artist.lower())
+                artist_matches = []
+                for t in results:
+                    cand_art_norm = re.sub(r'[^a-z0-9]', '', t.get('artistName', '').lower())
+                    if exp_art_norm and cand_art_norm and (exp_art_norm in cand_art_norm or cand_art_norm in exp_art_norm):
+                        artist_matches.append(t)
+
+                if not artist_matches:
+                    logger.info(f"iTunes metadata rejected: None of the {len(results)} results matched expected artist '{expected_artist}'")
+                    return None
+
+                # If expected title provided, pick exact track match
+                if expected_title and expected_title.strip():
+                    exp_t_norm = re.sub(r'[^a-z0-9]', '', expected_title.lower())
+                    for t in artist_matches:
+                        cand_t_norm = re.sub(r'[^a-z0-9]', '', t.get('trackName', '').lower())
+                        if exp_t_norm == cand_t_norm:
+                            matched_track = t
+                            break
+
+                if not matched_track:
+                    matched_track = artist_matches[0]
+            else:
+                matched_track = results[0]
+
+            if matched_track:
+                artwork_url = matched_track.get('artworkUrl100', '')
                 if artwork_url:
                     artwork_url = artwork_url.replace('100x100bb', '600x600bb')
                 return {
-                    'TITLE': track.get('trackName', ''),
-                    'ARTIST': track.get('artistName', ''),
-                    'ALBUM': track.get('collectionName', ''),
-                    'DATE': track.get('releaseDate', '')[:4],
+                    'TITLE': matched_track.get('trackName', ''),
+                    'ARTIST': matched_track.get('artistName', ''),
+                    'ALBUM': matched_track.get('collectionName', ''),
+                    'DATE': matched_track.get('releaseDate', '')[:4],
                     'ARTWORK_URL': artwork_url,
-                    'GENRE': track.get('primaryGenreName', ''),
-                    'COMPOSER': track.get('artistName', '')  # Fallback as composer is rarely populated
+                    'GENRE': matched_track.get('primaryGenreName', ''),
+                    'COMPOSER': matched_track.get('artistName', '')
                 }
     except Exception as e:
         logger.warning(f"iTunes metadata fetch error for '{query}': {e}")
     return None
+
+
+def extract_ytdlp_audio_metadata(info_dict: Optional[dict], status_obj: Optional[Any] = None) -> dict:
+    """
+    Extract accurate audio track metadata directly from yt-dlp's internal info dictionary,
+    matching YTDLnis's extractor logic without relying on external third-party catalog APIs.
+    """
+    if not info_dict:
+        info_dict = {}
+
+    raw_title = (info_dict.get("title") or getattr(status_obj, "title", None) or "").strip()
+    raw_track = (info_dict.get("track") or "").strip()
+    raw_artist = (info_dict.get("artist") or info_dict.get("creator") or "").strip()
+    raw_artists = info_dict.get("artists")
+    raw_album = (info_dict.get("album") or "").strip()
+    raw_uploader = (info_dict.get("uploader") or info_dict.get("channel") or getattr(status_obj, "uploader", None) or "").strip()
+    raw_genre = (info_dict.get("genre") or "").strip()
+
+    GENERIC_LABELS = {
+        'yrf', 't-series', 'tseries', 'zee music company', 'sony music india',
+        'sony music', 'tips official', 'tips', 'geet mp3', 'geetmp3',
+        'speed records', 'white hill music', 'eros now', 'saregama',
+        'saregama music', 'yrf spy universe', 'vevo'
+    }
+
+    # 1. Clean uploader if topic channel ("Artist - Topic" convention on YouTube Music)
+    clean_uploader = re.sub(r'\s*-\s*Topic$', '', raw_uploader, flags=re.IGNORECASE).strip()
+    is_label = clean_uploader.lower() in GENERIC_LABELS or clean_uploader.lower().endswith(" vevo")
+
+    # 2. Resolve Artist
+    artist = ""
+    if raw_artist:
+        artist = raw_artist
+    elif isinstance(raw_artists, list) and raw_artists:
+        artist = ", ".join([str(a).strip() for a in raw_artists if str(a).strip()])
+    elif clean_uploader and not is_label:
+        artist = clean_uploader
+
+    # 3. Resolve Title and Album
+    title = ""
+    album = raw_album
+
+    if raw_track:
+        title = raw_track
+    else:
+        # Check pipe-separated format common in music videos:
+        # e.g. "Song Name | Movie/Album | Artist / Singer"
+        main_part = raw_title
+        if '|' in raw_title:
+            segs = [s.strip() for s in raw_title.split('|') if s.strip()]
+            main_part = segs[0]
+            if not album and len(segs) >= 2:
+                album = segs[1]
+            if (not artist or is_label) and len(segs) >= 3:
+                cand_last = segs[-1]
+                if cand_last.lower() not in GENERIC_LABELS:
+                    artist = cand_last
+
+        # Parse main_part which may be 'Artist - Song' or 'Song : Artist'
+        if ' - ' in main_part:
+            parts = main_part.split(' - ', 1)
+            cand_art = parts[0].strip()
+            cand_title = parts[1].strip()
+            if not artist or is_label:
+                artist = cand_art
+            title = cand_title
+        elif ' : ' in main_part:
+            parts = main_part.split(' : ', 1)
+            cand_title = parts[0].strip()
+            cand_art = re.split(r'[\(\[]', parts[1])[0].strip()
+            if not artist or is_label:
+                artist = cand_art
+            title = cand_title
+        else:
+            title = main_part
+
+    # Clean clutter expressions from title if track wasn't explicitly tagged by platform
+    if not raw_track and title:
+        title = re.sub(r'\s*\[.*?\]', ' ', title)
+        title = re.sub(r'\s*\(.*?(?:official|video|audio|lyric|from|movie|4k|hd|remix|full|visualizer).*?\)', ' ', title, flags=re.IGNORECASE)
+        title = re.sub(r'\b(?:official\s+(?:video|audio|music\s+video)|lyric\s+video|full\s+video|visualizer|4k|hd|hq|song)\b', ' ', title, flags=re.IGNORECASE)
+        title = re.sub(r'\s+', ' ', title).strip()
+
+    if not title:
+        title = raw_title or "Unknown Title"
+
+    if not artist:
+        artist = clean_uploader or (raw_uploader if raw_uploader else "Unknown Artist")
+
+    if not album:
+        pl_title = info_dict.get("playlist_title") or info_dict.get("playlist")
+        if pl_title and str(pl_title).strip():
+            album = str(pl_title).strip()
+        else:
+            album = title
+
+    # 4. Resolve Primary Artist (first artist before comma, as in YTDLnis first_artist extraction)
+    first_artist = ""
+    if artist:
+        first_artist = re.split(r',\s+', artist)[0].strip()
+
+    # 5. Resolve Date / Year
+    date_val = ""
+    if info_dict.get("release_year"):
+        date_val = str(info_dict["release_year"])
+    elif info_dict.get("release_date"):
+        date_val = str(info_dict["release_date"])[:4]
+    elif info_dict.get("upload_date"):
+        date_val = str(info_dict["upload_date"])[:4]
+
+    # 6. Track Number
+    track_num = info_dict.get("track_number") or info_dict.get("playlist_index") or None
+
+    return {
+        'TITLE': title,
+        'ARTIST': artist,
+        'ALBUM': album,
+        'DATE': date_val,
+        'GENRE': raw_genre,
+        'COMPOSER': artist,
+        'ALBUM_ARTIST': first_artist or artist,
+        'FIRST_ARTIST': first_artist or artist,
+        'TRACK_NUMBER': track_num,
+        'COMMENT': f"Downloaded via yt-dlp App. Source: {getattr(status_obj, 'url', '') if status_obj else ''}"
+    }
 
 
 def fetch_synced_lyrics(query: str) -> Optional[str]:
@@ -983,19 +1150,27 @@ def apply_mutagen_audio_tags(
             if audio.tags is None:
                 audio.add_tags()
 
-            mp3_tags = {'TITLE': TIT2, 'ARTIST': TPE1, 'ALBUM': TALB, 'DATE': TDRC, 'GENRE': TCON, 'COMPOSER': TCOM}
-            
             genre = (meta_dict.get('GENRE') if meta_dict else None) or ""
             composer = (meta_dict.get('COMPOSER') if meta_dict else None) or ""
             comment = (meta_dict.get('COMMENT') if meta_dict else None) or ""
-            
-            meta_map = {'TITLE': title, 'ARTIST': artist, 'ALBUM': album, 'DATE': year, 'GENRE': genre, 'COMPOSER': composer}
-            
+            album_artist = (meta_dict.get('ALBUM_ARTIST') if meta_dict else None) or (meta_dict.get('FIRST_ARTIST') if meta_dict else None) or ""
+            track_num = meta_dict.get('TRACK_NUMBER') if meta_dict else None
+
+            mp3_tags = {'TITLE': TIT2, 'ARTIST': TPE1, 'ALBUM': TALB, 'DATE': TDRC, 'GENRE': TCON, 'COMPOSER': TCOM}
+            if album_artist:
+                mp3_tags['ALBUM_ARTIST'] = TPE2
+
+            meta_map = {'TITLE': title, 'ARTIST': artist, 'ALBUM': album, 'DATE': year, 'GENRE': genre, 'COMPOSER': composer, 'ALBUM_ARTIST': album_artist}
+
             for key, frame_class in mp3_tags.items():
                 val = meta_map.get(key)
                 if val:
                     audio.tags.delall(frame_class.__name__)
-                    audio.tags.add(frame_class(encoding=3, text=val))
+                    audio.tags.add(frame_class(encoding=3, text=str(val)))
+
+            if track_num:
+                audio.tags.delall('TRCK')
+                audio.tags.add(TRCK(encoding=3, text=str(track_num)))
 
             if comment:
                 audio.tags.delall('COMM')
@@ -1025,7 +1200,7 @@ def apply_mutagen_audio_tags(
         try:
             import mutagen.mp4 as mp4
             audio = mp4.MP4(filepath)
-            
+
             if title:
                 audio['\xa9nam'] = [title]
             if artist:
@@ -1035,6 +1210,13 @@ def apply_mutagen_audio_tags(
             if year:
                 audio['\xa9day'] = [str(year)]
             if meta_dict:
+                if meta_dict.get('ALBUM_ARTIST'):
+                    audio['aART'] = [str(meta_dict['ALBUM_ARTIST'])]
+                if meta_dict.get('TRACK_NUMBER'):
+                    try:
+                        audio['trkn'] = [(int(meta_dict['TRACK_NUMBER']), 0)]
+                    except Exception:
+                        pass
                 if meta_dict.get('GENRE'):
                     audio['\xa9gen'] = [meta_dict['GENRE']]
                 if meta_dict.get('COMPOSER'):
@@ -1059,7 +1241,7 @@ def apply_mutagen_audio_tags(
         try:
             from mutagen.flac import FLAC, Picture
             import base64
-            
+
             if ext == '.flac':
                 audio = FLAC(filepath)
                 if image_data:
@@ -1089,6 +1271,11 @@ def apply_mutagen_audio_tags(
                 if year:
                     audio['DATE'] = [str(year)]
                 if meta_dict:
+                    if meta_dict.get('ALBUM_ARTIST'):
+                        audio['ALBUMARTIST'] = [str(meta_dict['ALBUM_ARTIST'])]
+                        audio['ALBUM_ARTIST'] = [str(meta_dict['ALBUM_ARTIST'])]
+                    if meta_dict.get('TRACK_NUMBER'):
+                        audio['TRACKNUMBER'] = [str(meta_dict['TRACK_NUMBER'])]
                     if meta_dict.get('GENRE'):
                         audio['GENRE'] = [meta_dict['GENRE']]
                     if meta_dict.get('COMPOSER'):
@@ -1544,15 +1731,21 @@ def fetch_formats_sync(url: str) -> VideoInfo:
     url_hash = hashlib.md5(clean_url.encode('utf-8')).hexdigest()
     cache_file = CACHE_DIR / f"{url_hash}.json"
     
-    # Check cache validity (5 hours TTL)
+    # Check cache validity (5 hours TTL matching YTDLnis)
     if cache_file.exists():
         try:
             mtime = cache_file.stat().st_mtime
             if (time.time() - mtime) < 5 * 3600:
                 with open(cache_file, "r", encoding="utf-8") as f:
                     cached_data = json.load(f)
-                logger.info(f"Loaded formats from cache for: {clean_url}")
+                logger.info(f"Loaded formats from cache (5h TTL) for: {clean_url}")
                 return VideoInfo(**cached_data)
+            else:
+                # Expired format cache (>5h) - delete to prevent stale 403 Forbidden CDN URLs
+                try:
+                    cache_file.unlink(missing_ok=True)
+                except Exception:
+                    pass
         except Exception as e:
             logger.warning(f"Failed to read cache for {clean_url}: {e}")
     
@@ -1689,27 +1882,34 @@ def fetch_formats_sync(url: str) -> VideoInfo:
             
     thumbnail_url = info.get("thumbnail")
     video_title = info.get("title", "Unknown")
+    uploader = info.get("uploader") or info.get("channel") or info.get("artist")
     
-    if "music.youtube.com" in clean_url:
-        search_q = clean_search_query(video_title)
-        itunes_meta = fetch_auto_metadata(search_q)
-        if itunes_meta:
-            if itunes_meta.get("ARTWORK_URL"):
-                thumbnail_url = itunes_meta["ARTWORK_URL"]
-            if itunes_meta.get("TITLE") and itunes_meta.get("ARTIST"):
-                video_title = f"{itunes_meta['ARTIST']} - {itunes_meta['TITLE']}"
+    # For YouTube Music and YouTube tracks, format title as "Artist - Title" if artist is not already in title
+    if "music.youtube.com" in clean_url or "youtube.com" in clean_url:
+        artist = info.get("artist") or info.get("creator") or uploader
+        if artist and video_title and artist.lower() not in video_title.lower():
+            video_title = f"{artist} - {video_title}"
     
-    return VideoInfo(
+    video_info = VideoInfo(
         id=info.get("id", ""),
         title=video_title,
         thumbnail=thumbnail_url,
         duration=duration,
         duration_string=duration_string,
-        uploader=info.get("uploader"),
+        uploader=uploader,
         view_count=info.get("view_count"),
         webpage_url=info.get("webpage_url", clean_url),
         formats=parsed_formats,
     )
+
+    try:
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(video_info.model_dump(), f)
+        logger.info(f"Saved {len(parsed_formats)} formats to cache (5h TTL) for: {clean_url}")
+    except Exception as e:
+        logger.warning(f"Failed to write format cache for {clean_url}: {e}")
+
+    return video_info
 
 
 async def fetch_formats(url: str) -> VideoInfo:
@@ -2086,14 +2286,24 @@ def _build_ydl_opts(
         if embed_metadata:
             meta_pp["add_metadata"] = True
             if is_audio_only:
-                opts["parse_metadata"] = [
-                    "%(playlist_uploader,artist,uploader|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)",
+                audio_parse = []
+                if getattr(request, "title", None) and request.title.strip():
+                    opts.setdefault("replace_in_metadata", []).append(("title", r"^.*$", request.title.strip()))
+                    audio_parse.append("%(title)s:%(meta_title)s")
+                if getattr(request, "artist", None) and request.artist.strip():
+                    opts.setdefault("replace_in_metadata", []).append(("uploader", r"^.*$", request.artist.strip()))
+
+                # YTDLnis exact execution sequence: topic cleanup -> artist map -> first artist -> album -> album artist -> release year -> track number
+                audio_parse.extend([
+                    "%(artists,artist,creators,uploader,channel,creator|)s:^(?P<uploader>.*?)(?:(?= - Topic)|$)",
+                    "%(uploader)s:%(artist)s",
+                    "%(playlist_uploader,artist|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)",
                     "%(album,playlist_title,playlist|)s:%(meta_album)s",
                     "%(album_artist,first_artist|)s:%(album_artist)s",
                     "%(release_year,release_date>%Y,upload_date>%Y)s:(?P<meta_date>\\d+)",
-                    "%(track_number,playlist_index)d:(?P<track_number>\\d+)",
-                    "%(artists,artist,creators,uploader,channel,creator|)l:^(?P<uploader>.*?)(?:(?= - Topic)|$)"
-                ]
+                    "%(track_number,playlist_index)d:(?P<track_number>\\d+)"
+                ])
+                opts["parse_metadata"] = audio_parse
             else:
                 opts["parse_metadata"] = [
                     "%(title)s:%(meta_title)s",
@@ -2481,8 +2691,21 @@ def generate_ytdlp_cli_command(opts: dict, clean_url: str, request: DownloadRequ
         cmd_args.append("--write-thumbnail")
     if any(isinstance(p, dict) and p.get("key") == "EmbedThumbnail" for p in postprocessors):
         cmd_args.append("--embed-thumbnail")
+    if any(isinstance(p, dict) and p.get("key") == "FFmpegThumbnailsConvertor" for p in postprocessors):
+        cmd_args.extend(["--convert-thumbnails", "jpg"])
+    if opts.get("postprocessor_args"):
+        for pp_name, pp_args in opts["postprocessor_args"].items():
+            if isinstance(pp_args, list) and pp_args:
+                cmd_args.extend(["--ppa", f'"{pp_name}:{" ".join(pp_args)}"'])
     if any(isinstance(p, dict) and p.get("key") == "FFmpegMetadata" and p.get("add_metadata") for p in postprocessors):
-        cmd_args.append("--add-metadata")
+        cmd_args.append("--embed-metadata")
+    if opts.get("replace_in_metadata"):
+        for rim in opts["replace_in_metadata"]:
+            if len(rim) == 3:
+                cmd_args.extend(["--replace-in-metadata", f'"{rim[0]}"', f'"{rim[1]}"', f'"{rim[2]}"'])
+    if opts.get("parse_metadata"):
+        for pm in opts["parse_metadata"]:
+            cmd_args.extend(["--parse-metadata", f'"{pm}"'])
     if any(isinstance(p, dict) and p.get("key") == "FFmpegMetadata" and p.get("add_chapters") for p in postprocessors):
         cmd_args.append("--embed-chapters")
     if opts.get("split_chapters"):
@@ -2650,7 +2873,7 @@ def log_session_header(download_id: str, request: DownloadRequest, settings: App
 
     embed_thumb = "Enabled" if any(isinstance(p, dict) and p.get("key") == "EmbedThumbnail" for p in opts.get("postprocessors", [])) else "Disabled"
     write_thumb_str = "Enabled" if (opts.get("writethumbnail") and (getattr(adv, "write_thumbnail", None) or getattr(settings, "write_thumbnail", False))) else "Disabled"
-    embed_meta = "Enabled (Auto iTunes & Vorbis tags)" if getattr(settings, "embed_metadata", True) else "Disabled"
+    embed_meta = "Enabled (yt-dlp Internal & Vorbis tags)" if getattr(settings, "embed_metadata", True) else "Disabled"
     synced_lyrics = "Enabled (LRC providers)" if (is_audio_only and getattr(settings, "embed_lyrics", True)) else "N/A"
 
     sb_str = "Disabled"
@@ -2810,19 +3033,45 @@ def _run_download(download_id: str, request: DownloadRequest, settings: AppSetti
             monitor_thread = threading.Thread(target=_monitor_ffmpeg_progress, daemon=True)
             monitor_thread.start()
 
+        downloaded_info_dict = None
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl._out_files.error = extractor
                 ydl._out_files.out = extractor
                 
                 if not status_obj.title or status_obj.title in ("Unknown", "Initializing..."):
-                    info = ydl.extract_info(clean_url, download=False)
-                    status_obj.title = info.get("title", "Unknown")
-                    status_obj.thumbnail = info.get("thumbnail")
-                    if info.get("duration") and not status_obj.duration:
-                        status_obj.duration = float(info.get("duration"))
+                    try:
+                        info_pre = ydl.extract_info(clean_url, download=False)
+                        if info_pre:
+                            if "entries" in info_pre and info_pre["entries"]:
+                                info_pre = info_pre["entries"][0]
+                            status_obj.title = info_pre.get("title", "Unknown")
+                            status_obj.thumbnail = info_pre.get("thumbnail")
+                            if info_pre.get("duration") and not status_obj.duration:
+                                status_obj.duration = float(info_pre.get("duration"))
+                            if info_pre.get("uploader") and not getattr(status_obj, "uploader", None):
+                                try:
+                                    status_obj.uploader = info_pre.get("uploader")
+                                except Exception:
+                                    pass
+                            downloaded_info_dict = info_pre
+                    except Exception:
+                        pass
                 
-                ydl.download([clean_url])
+                info_res = ydl.extract_info(clean_url, download=True)
+                if info_res:
+                    if "entries" in info_res and info_res["entries"]:
+                        info_res = info_res["entries"][0]
+                    downloaded_info_dict = info_res
+                    if not status_obj.title or status_obj.title in ("Unknown", "Initializing..."):
+                        status_obj.title = downloaded_info_dict.get("title") or status_obj.title
+                    if not status_obj.thumbnail:
+                        status_obj.thumbnail = downloaded_info_dict.get("thumbnail")
+                    if downloaded_info_dict.get("uploader"):
+                        try:
+                            status_obj.uploader = downloaded_info_dict.get("uploader")
+                        except Exception:
+                            pass
         finally:
             stop_progress_monitor.set()
             if monitor_thread and monitor_thread.is_alive():
@@ -3012,35 +3261,61 @@ def _run_download(download_id: str, request: DownloadRequest, settings: AppSetti
             append_execution_log(download_id, "=" * 80)
             append_execution_log(download_id, "[POSTPROCESS] Audio track detected; executing audio enrichment pipeline...")
             append_execution_log(download_id, f"[POSTPROCESS] Audio Stream: {os.path.basename(audio_path)}")
-            search_q = clean_search_query(status_obj.title or "")
             
-            # Fetch official iTunes metadata (Title, Artist, Album, Year)
-            _push_live_status(status_obj, "Fetching iTunes metadata...", loop)
-            append_execution_log(download_id, f"[POSTPROCESS] Querying iTunes catalog for official metadata (Query: \"{search_q}\")...")
-            itunes_meta = fetch_auto_metadata(search_q)
+            # Extract internal yt-dlp metadata (Title, Artist, Album, Year, Genre) without external iTunes APIs
+            _push_live_status(status_obj, "Processing internal audio metadata...", loop)
+            append_execution_log(download_id, "[POSTPROCESS] Extracting native stream metadata via yt-dlp internal parser...")
+            audio_meta = extract_ytdlp_audio_metadata(downloaded_info_dict, status_obj)
+            append_execution_log(download_id, f"[POSTPROCESS] Native Metadata: \"{audio_meta['TITLE']}\" by {audio_meta['ARTIST']} (Album: \"{audio_meta['ALBUM']}\", Year: {audio_meta['DATE'] or 'N/A'})")
             
-            if itunes_meta and itunes_meta.get('TITLE') and itunes_meta.get('ARTIST'):
-                append_execution_log(download_id, f"[POSTPROCESS] iTunes Match Found: \"{itunes_meta.get('TITLE')}\" by {itunes_meta.get('ARTIST')} (Album: \"{itunes_meta.get('ALBUM', 'Single')}\", Year: {itunes_meta.get('YEAR', 'N/A')})")
-                search_q = f"{itunes_meta['ARTIST']} {itunes_meta['TITLE']}"
-            else:
-                append_execution_log(download_id, f"[POSTPROCESS] No direct iTunes catalog match found; retaining source metadata.")
+            # Prepare clean query for synchronized lyrics search
+            search_q = f"{audio_meta['ARTIST']} {audio_meta['TITLE']}".strip() if audio_meta['ARTIST'] else audio_meta['TITLE']
             
-            # Fetch and save iTunes high-res square cover art if available and embed_thumbnail is True
+            # Ensure the authentic video/track thumbnail is always preserved (from yt-dlp / YouTube)
             embed_thumb = getattr(settings, "embed_thumbnail", True)
-            if embed_thumb and itunes_meta and itunes_meta.get('ARTWORK_URL'):
-                _push_live_status(status_obj, "Downloading album artwork...", loop)
-                append_execution_log(download_id, f"[POSTPROCESS] Downloading 600x600 high-res album artwork from iTunes...")
-                try:
-                    itunes_art_path = os.path.join(staging_dir, "itunes_cover.jpg")
-                    req = urllib.request.Request(itunes_meta['ARTWORK_URL'], headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req, timeout=10) as response, open(itunes_art_path, 'wb') as out_file:
-                        shutil.copyfileobj(response, out_file)
-                    thumbnail_path = itunes_art_path
-                    logger.info("Successfully downloaded 600x600 square iTunes cover art")
-                    append_execution_log(download_id, f"[POSTPROCESS] High-res album artwork successfully downloaded and cached.")
-                except Exception as e:
-                    logger.warning(f"Failed to download iTunes cover art: {e}")
-                    append_execution_log(download_id, f"[WARN] Failed to download iTunes cover art: {e}")
+            if adv and getattr(adv, "embed_thumbnail", None) is not None:
+                embed_thumb = adv.embed_thumbnail
+                
+            if embed_thumb:
+                # If no thumbnail was downloaded into staging_dir, fetch the authentic source thumbnail from status_obj
+                if (not thumbnail_path or not os.path.exists(thumbnail_path)) and status_obj.thumbnail:
+                    try:
+                        _push_live_status(status_obj, "Downloading authentic source thumbnail...", loop)
+                        append_execution_log(download_id, f"[POSTPROCESS] Fetching authentic source thumbnail from: {status_obj.thumbnail}")
+                        raw_thumb_path = os.path.join(staging_dir, "source_thumb_raw")
+                        source_jpg_path = os.path.join(staging_dir, "source_cover.jpg")
+                        req = urllib.request.Request(status_obj.thumbnail, headers={'User-Agent': 'Mozilla/5.0'})
+                        with urllib.request.urlopen(req, timeout=10) as response, open(raw_thumb_path, 'wb') as out_f:
+                            shutil.copyfileobj(response, out_f)
+                        # Crop to square JPG with ffmpeg (matching YTDLnis)
+                        cmd = [
+                            "ffmpeg", "-y", "-i", raw_thumb_path,
+                            "-vf", "crop='if(gt(ih,iw),iw,ih)':'if(gt(iw,ih),ih,iw)'",
+                            "-qmin", "1", "-q:v", "1", source_jpg_path
+                        ]
+                        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                        thumbnail_path = source_jpg_path
+                        append_execution_log(download_id, f"[POSTPROCESS] Authentic source thumbnail prepared successfully (1:1 square crop).")
+                    except Exception as th_err:
+                        logger.warning(f"Failed to fetch source thumbnail from URL: {th_err}")
+                        append_execution_log(download_id, f"[WARN] Failed to fetch source thumbnail: {th_err}")
+                elif thumbnail_path and os.path.exists(thumbnail_path):
+                    # Ensure audio thumbnail is converted to high-quality 1:1 square JPEG for maximum player compatibility
+                    try:
+                        sq_jpg_path = os.path.join(staging_dir, "cover_square.jpg")
+                        subprocess.run(
+                            [
+                                "ffmpeg", "-y", "-i", thumbnail_path,
+                                "-vf", "crop='if(gt(ih,iw),iw,ih)':'if(gt(iw,ih),ih,iw)'",
+                                "-qmin", "1", "-q:v", "1", sq_jpg_path
+                            ],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
+                        )
+                        if os.path.exists(sq_jpg_path) and os.path.getsize(sq_jpg_path) > 0:
+                            thumbnail_path = sq_jpg_path
+                            append_execution_log(download_id, f"[POSTPROCESS] Converted and cropped cover art to 1:1 square JPEG.")
+                    except Exception as sq_err:
+                        logger.debug(f"Could not crop/convert thumbnail {thumbnail_path}: {sq_err}")
             
             # Fetch synced lyrics if not already downloaded and setting is enabled
             if not lyrics_text and settings.embed_lyrics:
@@ -3049,18 +3324,24 @@ def _run_download(download_id: str, request: DownloadRequest, settings: AppSetti
                 lyrics_text = fetch_synced_lyrics(search_q)
                 if lyrics_text:
                     append_execution_log(download_id, f"[POSTPROCESS] Synchronized lyrics retrieved ({len(lyrics_text.splitlines())} lines).")
+                    try:
+                        clean_a = re.sub(r'[\\/*?:"<>|\0-\x1f]', "", audio_meta['ARTIST']).strip()
+                        clean_t = re.sub(r'[\\/*?:"<>|\0-\x1f]', "", audio_meta['TITLE']).strip()
+                        lrc_fname = f"{clean_a} - {clean_t}.lrc" if (clean_a and clean_t) else f"{clean_t}.lrc"
+                        with open(os.path.join(staging_dir, lrc_fname), "w", encoding="utf-8") as lrc_file:
+                            lrc_file.write(lyrics_text)
+                    except Exception as lrc_e:
+                        logger.debug(f"Failed to write sidecar .lrc file: {lrc_e}")
                 else:
                     append_execution_log(download_id, f"[POSTPROCESS] No synchronized lyrics matched for this track.")
                 
             # Add COMMENT for mutagen (download URL)
-            if not itunes_meta:
-                itunes_meta = {}
-            itunes_meta['COMMENT'] = f"Downloaded via yt-dlp App. Source: {status_obj.url}"
+            audio_meta['COMMENT'] = f"Downloaded via yt-dlp App. Source: {status_obj.url}"
                 
             # Apply Mutagen tagging AFTER FFmpeg completes so cover art and ID3 tags are preserved!
             _push_live_status(status_obj, "Embedding audio tags & artwork...", loop)
-            append_execution_log(download_id, f"[POSTPROCESS] Applying Mutagen tags (ID3v2.4 / Vorbis / MP4 tags, cover art, synced lyrics, source URL)...")
-            apply_mutagen_audio_tags(audio_path, thumbnail_path if embed_thumb else None, lyrics_text, itunes_meta, status_obj.title or "")
+            append_execution_log(download_id, f"[POSTPROCESS] Applying Mutagen tags (ID3v2.4 / Vorbis / MP4 tags, native cover art, synced lyrics, source URL)...")
+            apply_mutagen_audio_tags(audio_path, thumbnail_path if embed_thumb else None, lyrics_text, audio_meta, status_obj.title or "")
             append_execution_log(download_id, f"[POSTPROCESS] Mutagen tags successfully embedded into media container.")
 
         # Move final tagged file(s) from staging_dir to output_dir
@@ -3070,10 +3351,10 @@ def _run_download(download_id: str, request: DownloadRequest, settings: AppSetti
         final_files = []
         
         final_name_base = None
-        if is_audio_download and 'itunes_meta' in locals() and itunes_meta and itunes_meta.get('TITLE') and itunes_meta.get('ARTIST'):
+        if is_audio_download and 'audio_meta' in locals() and audio_meta and audio_meta.get('TITLE') and audio_meta.get('ARTIST'):
             # Sanitize invalid Windows filename chars including control characters
-            clean_artist = re.sub(r'[\\/*?:"<>|\0-\x1f]', "", itunes_meta['ARTIST']).strip()
-            clean_title = re.sub(r'[\\/*?:"<>|\0-\x1f]', "", itunes_meta['TITLE']).strip()
+            clean_artist = re.sub(r'[\\/*?:"<>|\0-\x1f]', "", audio_meta['ARTIST']).strip()
+            clean_title = re.sub(r'[\\/*?:"<>|\0-\x1f]', "", audio_meta['TITLE']).strip()
             if clean_artist and clean_title:
                 final_name_base = f"{clean_artist} - {clean_title}".rstrip('. ')
 
