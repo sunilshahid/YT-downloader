@@ -19,12 +19,11 @@
   <p align="center">
     <a href="#quick-start">Quick Start</a> •
     <a href="#key-features">Key Features</a> •
-    <a href="#cookies-and-anti-bot">Cookies & Anti-Bot Guide</a> •
+    <a href="#docker">Docker Deployment</a> •
     <a href="#screenshots">Screenshots</a> •
     <a href="#architecture">Architecture</a> •
     <a href="#configuration">Configuration</a> •
-    <a href="#docker">Docker</a> •
-    <a href="#troubleshooting">Troubleshooting</a>
+    <a href="#warnings-and-troubleshooting">⚠️ Warnings, Cookies & Troubleshooting</a>
   </p>
 
 </div>
@@ -90,44 +89,60 @@ Access the UI at: **`http://localhost:8000`**
 
 ---
 
-#### 🐳 Option B: Docker (Pre-Built or Local Build)
+#### 🐳 Option B: Docker (Pre-Built Container)
 
-Run everything inside a self-contained container with FFmpeg, aria2, and Node.js pre-installed:
+Run everything inside an optimized, production-ready container with FFmpeg, aria2, **Deno**, and Node.js pre-installed:
 
-> [!WARNING]
-> **⚠️ Cloud VPS & Datacenter Hosting Warning:**
-> YouTube aggressively blocks datacenter / cloud VPS IPs (Hetzner, DigitalOcean, AWS, OVH, Contabo, etc.) with BotGuard challenges (*"Sign in to confirm you're not a bot"*).
-> - **Solution:** Export your YouTube cookies from your browser (using *Get cookies.txt LOCALLY*) and import them under **Settings &rarr; Cookies & Accounts**. Chrome TLS impersonation is enabled by default to keep the session authenticated.
+##### 1. Using Docker Compose (Recommended)
 
-**1. Run Directly from Docker Hub (Fastest — No Build Needed):**
+Create a folder, create `docker-compose.yml` with `nano`, paste the configuration, and launch:
+
 ```bash
-docker run -d \
-  --name yt-downloader \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -v ./backend/data:/app/backend/data \
-  -v ./Downloads:/downloads \
-  sunilshahid/yt-downloader:latest
+# 1. Create folder and navigate into it
+mkdir yt-downloader && cd yt-downloader
+
+# 2. Create and edit docker-compose.yml
+nano docker-compose.yml
 ```
 
-**2. Or Using Docker Compose:**
+Paste the following YAML content:
+```yaml
+services:
+  app:
+    image: sunilshahid/yt-downloader:latest
+    container_name: yt-downloader
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/backend/data
+      - ./downloads:/downloads
+```
+
+> **To save and exit in nano:** Press `Ctrl + O`, hit `Enter`, then press `Ctrl + X`.
+
+Start the container in the background:
 ```bash
 docker compose up -d
 ```
 
-**3. Or Build Locally from Source:**
+##### 2. Or Single-Command Docker Run
+
 ```bash
-docker build -t sunilshahid/yt-downloader:latest .
 docker run -d \
   --name yt-downloader \
   --restart unless-stopped \
   -p 8000:8000 \
-  -v ./backend/data:/app/backend/data \
-  -v ./Downloads:/downloads \
+  -v ./data:/app/backend/data \
+  -v ./downloads:/downloads \
   sunilshahid/yt-downloader:latest
 ```
 
 Access the UI at: **`http://localhost:8000`**
+
+> [!WARNING]
+> **⚠️ Running on a Cloud VPS / Datacenter (Hetzner, DigitalOcean, AWS, OVH, Contabo, etc.)?**
+> YouTube challenges datacenter IPs with *"Sign in to confirm you're not a bot"*. See our [⚠️ Warnings, Cookies & Troubleshooting Guide](#warnings-and-troubleshooting) below to bypass this in under a minute!
 
 ---
 
@@ -280,16 +295,109 @@ The settings panel allows you to customize every aspect of your downloading pipe
 
 ---
 
-<a id="cookies-and-anti-bot"></a>
-## 🍪 Cookies, Proof of Origin (PO Token) & Account Safety Guide
+<a id="docker"></a>
+<a id="docker-deployment"></a>
+## 🐳 Docker & Container Deployment
 
-YouTube aggressively restricts cloud VPS and datacenter IP addresses (Hetzner, DigitalOcean, AWS, OVH, Contabo, etc.) with BotGuard bot checks (*"Sign in to confirm you're not a bot"*), SABR streaming locks, and JavaScript cipher challenges.
+YTDL Downloader includes an optimized, production-ready multi-stage Docker build that bundles the built React frontend, FastAPI backend, FFmpeg, aria2, **Deno** (official JS challenge engine), and **Node.js** into a single unified container.
 
-With **YTDL Downloader**, you can bypass these hurdles completely to download videos in **4K (2160p), 1440p, 1080p, VP9, AV1, and high-bitrate audio**.
+> [!TIP]
+> **🚀 Out-of-the-Box Anti-Bot Bypass:**
+> The Docker container comes pre-configured with **Deno**, **yt-dlp-ejs**, and **Chrome TLS Impersonation** (`curl_cffi`). When paired with your cookies, downloads in **4K (2160p), 1440p, 1080p, VP9, and AV1** succeed right out of the box!
+
+### 1. Using Docker Compose (Recommended)
+
+You can launch the entire stack in seconds using Docker Compose:
+
+```bash
+# 1. Create a directory for YTDL Downloader
+mkdir yt-downloader && cd yt-downloader
+
+# 2. Create the docker-compose.yml file
+nano docker-compose.yml
+```
+
+Paste the following configuration:
+```yaml
+services:
+  app:
+    image: sunilshahid/yt-downloader:latest
+    container_name: yt-downloader
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/backend/data
+      - ./downloads:/downloads
+```
+
+> **To save and exit in nano:** Press `Ctrl + O`, hit `Enter`, then press `Ctrl + X`.
+
+Start the container in the background:
+```bash
+docker compose up -d
+```
+
+### 2. Single-Command Docker Run
+If you prefer running a single container without a compose file:
+```bash
+docker run -d \
+  --name yt-downloader \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v ./data:/app/backend/data \
+  -v ./downloads:/downloads \
+  sunilshahid/yt-downloader:latest
+```
+
+Access the web interface at: **`http://localhost:8000`** *(or `http://YOUR_SERVER_IP:8000`)*
 
 ---
 
-### ⚠️ CRITICAL WARNING: Account Safety & Ban Prevention
+### 3. Build & Push to Docker Hub (From Source)
+If you made modifications and want to build and publish your own image:
+```bash
+# 1. Build the production multi-stage image
+docker build -t sunilshahid/yt-downloader:latest .
+
+# 2. Test locally
+docker run -d \
+  --name yt-downloader \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v ./data:/app/backend/data \
+  -v ./downloads:/downloads \
+  sunilshahid/yt-downloader:latest
+
+# 3. Log in and push to Docker Hub
+docker login
+docker push sunilshahid/yt-downloader:latest
+```
+
+### 🪟 Windows & Lightweight WSL2 Setup
+On Windows, Docker Desktop utilizes WSL2. A lightweight setup has been pre-configured:
+1. **Lightweight Resource Limits (`.wslconfig`)**: Limits memory to 2GB and 2 CPUs so your host system never slows down.
+2. **1-Click Virtualization & WSL Setup**:
+   - Right-click `setup-wsl-docker.bat` and select **"Run as administrator"**.
+   - It enables Windows Virtual Machine Platform and installs Debian (lightweight distro, ~80MB).
+   - If prompted, restart your PC once so Windows loads the hypervisor, then launch Docker Desktop!
+
+---
+
+<a id="warnings-and-troubleshooting"></a>
+<a id="troubleshooting"></a>
+## ⚠️ Warnings, Cookie Guide & Troubleshooting
+
+<a id="cloud-vps-warning"></a>
+### 1. ⚠️ Cloud VPS & Datacenter Bot Wall (*"Sign in to confirm you're not a bot"*)
+YouTube aggressively restricts cloud VPS and datacenter IP addresses (Hetzner, DigitalOcean, AWS, OVH, Linode, Contabo, etc.) with BotGuard bot checks and SABR streaming locks.
+
+* **Why it happens:** Datacenter IP ranges are automatically flagged as potential scraping bots by YouTube.
+* **The Solution:** Import cookies exported from an Incognito browser session (detailed below). Our container automatically applies Chrome TLS Impersonation (`curl_cffi`) and Deno JS cipher solving to make your server look like a genuine Google Chrome browser.
+
+---
+
+### 2. ⚠️ CRITICAL WARNING: Account Safety & Ban Prevention
 
 > [!CAUTION]
 > **DO NOT USE YOUR PRIMARY PERSONAL OR SENSITIVE GOOGLE ACCOUNT!**
@@ -301,13 +409,13 @@ With **YTDL Downloader**, you can bypass these hurdles completely to download vi
 
 ---
 
-### 📥 Step-by-Step: Exporting Cookies via Incognito
+### 3. 🍪 Step-by-Step: How to Export Cookies via Incognito
 
 > [!IMPORTANT]
 > **Why Unauthenticated Incognito Only Shows 360p:**
 > If you export cookies from Incognito *without* logging in, YouTube classifies the connection as an anonymous guest and caps formats to **360p**.
 > 
-> To unlock **4K (2160p), 1440p, 1080p, and high-bitrate audio**, you must sign into a Google account inside Incognito following the steps below.
+> To unlock **4K (2160p), 1440p, 1080p, VP9, AV1, and high-bitrate audio**, you must sign into a Google account inside Incognito following the steps below.
 
 #### Recommended Extension: "Get cookies.txt LOCALLY"
 We strongly recommend **[Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)** over *Cookie-Editor*. Extensions like *Cookie-Editor* often only export ~14 basic cookies, missing vital authentication and security tokens. **Get cookies.txt LOCALLY** exports the complete Netscape cookie jar with all 50+ essential cookies (including `LOGIN_INFO`, `SID`, `HSID`, `SSID`, `SAPISID`, and `*PSIDTS`).
@@ -330,107 +438,17 @@ We strongly recommend **[Get cookies.txt LOCALLY](https://chromewebstore.google.
 
 ---
 
-### 🛡️ Step-by-Step: Extracting Proof of Origin (`visitor_data`)
+### 4. HTTP 403 Forbidden on Media Chunks
+- Ensure your Netscape cookies are updated under **Settings &rarr; Cookies & Accounts**.
+- If YouTube rotated the tokens, re-export them from an Incognito tab and paste the updated text.
 
-YouTube requires a genuine `visitor_data` context to serve high-resolution 4K/1080p stream URLs without forcing SABR playback restrictions.
-
-1. **Open YouTube in Chrome / Edge**:
-   - Go to [youtube.com](https://www.youtube.com).
-2. **Open Developer Tools**:
-   - Press `F12` (or `Ctrl+Shift+I`), and switch to the **Console** tab.
-3. **Copy Your Visitor Data**:
-   - Type or paste the following command into the Console and press **Enter**:
-     ```javascript
-     copy(ytcfg.get("VISITOR_DATA"))
-     ```
-   - This instantly copies your exact, full `visitor_data` string (starting with `Cgt...`) directly to your clipboard without truncation.
-4. **Save in YTDL Downloader**:
-   - In YTDL Downloader, navigate to **Settings &rarr; Proof of Origin (PO Token)**.
-   - Toggle **Enable Proof of Origin** to **ON**.
-   - Under Mode, select **Manual**.
-   - Paste your `visitor_data` into the **Visitor Data** field.
-   - Click **Save Settings**.
-   - *(Note: A single `visitor_data` string remains valid for weeks or months—you do not need to update it every time!)*
-
----
-
-<a id="docker"></a>
-<a id="docker-deployment"></a>
-## 🐳 Docker & Container Deployment
-
-YTDL Downloader includes an optimized, production-ready multi-stage Docker build that bundles the built React frontend, FastAPI backend, FFmpeg, aria2, **Deno** (official JS challenge engine), and **Node.js** into a single unified container.
-
-> [!TIP]
-> **🚀 Out-of-the-Box Bot Bypass:**
-> The Docker container comes pre-configured with **Deno**, **yt-dlp-ejs**, and **Chrome TLS Impersonation** (`curl_cffi`). When paired with your cookies and `visitor_data`, downloads in 4K/1080p succeed straight away without manual server tweaking!
-
-### 1. Pull & Run from Docker Hub (Recommended)
-No local build required:
-```bash
-docker pull sunilshahid/yt-downloader:latest
-
-docker run -d \
-  --name yt-downloader \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -v ./backend/data:/app/backend/data \
-  -v ./Downloads:/downloads \
-  sunilshahid/yt-downloader:latest
-```
-
-### 2. Using Docker Compose
-You can run the application with a single command using `docker-compose.yml`:
-```bash
-docker compose up -d
-```
-
-### 3. Build & Push to Docker Hub (From Source)
-If you made changes and want to build and publish your own image:
-```bash
-# 1. Build the production multi-stage image
-docker build -t sunilshahid/yt-downloader:latest .
-
-# 2. Test locally
-docker run -d \
-  --name yt-downloader \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -v ./backend/data:/app/backend/data \
-  -v ./Downloads:/downloads \
-  sunilshahid/yt-downloader:latest
-
-# 3. Log in and push to Docker Hub
-docker login
-docker push sunilshahid/yt-downloader:latest
-```
-
-Access the full stack web application at: **http://localhost:8000**
-
-### 🪟 Windows & Lightweight WSL2 Setup
-On Windows, Docker Desktop utilizes WSL2. A lightweight setup has been pre-configured:
-1. **Lightweight Resource Limits (`.wslconfig`)**: Limits memory to 2GB and 2 CPUs so your host system never slows down.
-2. **1-Click Virtualization & WSL Setup**:
-   - Right-click `setup-wsl-docker.bat` and select **"Run as administrator"**.
-   - It enables Windows Virtual Machine Platform and installs Debian (lightweight distro, ~80MB).
-   - If prompted, restart your PC once so Windows loads the hypervisor, then launch Docker Desktop!
-
----
-
-<a id="troubleshooting"></a>
-## ❓ Troubleshooting
-
-### 1. HTTP 403 Forbidden on YouTube Downloads
-- Navigate to **Settings &rarr; Proof of Origin (PO Token)**.
-- Enable Proof of Origin generation and click **Test Token Generation**.
-- Ensure a valid Netscape cookie is configured under **Settings &rarr; Cookies & Accounts**.
-
-### 2. FFmpeg Not Detected
+### 5. FFmpeg Not Detected
 - Ensure `ffmpeg` and `ffprobe` are installed and available in your system's `PATH`.
-- On Windows, install via winget: `winget install Gyan.FFmpeg`.
-- On macOS, install via Homebrew: `brew install ffmpeg`.
-- On Linux, install via apt: `sudo apt install ffmpeg`.
+- On Windows: `winget install Gyan.FFmpeg`
+- On macOS: `brew install ffmpeg`
+- On Linux: `sudo apt install ffmpeg`
 
-### 3. Port 8000 Already in Use
+### 6. Port 8000 Already in Use
 - Run with a custom port:
   ```bash
   uvicorn main:app --host 127.0.0.1 --port 8080
