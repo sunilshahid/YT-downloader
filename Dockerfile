@@ -14,8 +14,8 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# ── Stage 2: Full-Stack Runtime (Python 3.11 Slim) ───────────────────
-FROM python:3.11-slim
+# ── Stage 2: Full-Stack Runtime (Python 3.12 Slim) ───────────────────
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

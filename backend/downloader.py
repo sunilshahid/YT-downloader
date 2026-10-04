@@ -1774,7 +1774,8 @@ def _build_ydl_opts(
     if getattr(settings, "create_subdirectories", False):
         sub_fmt = getattr(settings, "subdirectory_format", None) or getattr(settings, "subdirectory_template", "%(uploader)s")
         if sub_fmt:
-            template = f"{sub_fmt.strip('/\\')}/{fname_tmpl}"
+            clean_sub = sub_fmt.strip('/\\')
+            template = f"{clean_sub}/{fname_tmpl}"
         else:
             template = fname_tmpl
     else:

@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install system dependencies required by yt-dlp
 RUN apt-get update && \
