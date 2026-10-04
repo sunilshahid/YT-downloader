@@ -292,38 +292,39 @@ With **YTDL Downloader**, you can bypass these hurdles completely to download vi
 ### ⚠️ CRITICAL WARNING: Account Safety & Ban Prevention
 
 > [!CAUTION]
-> **DO NOT USE YOUR PRIMARY PERSONAL OR SENSITIVE GOOGLE ACCOUNT FOR MASS AUTOMATED DOWNLOADING!**
+> **DO NOT USE YOUR PRIMARY PERSONAL OR SENSITIVE GOOGLE ACCOUNT!**
 > 
 > When you export session cookies from a personal Google account and use them on a cloud server/VPS:
-> - If you download hundreds of videos in bulk or trigger rate limits, Google's automated anti-abuse algorithms may flag the activity as automated scraping.
-> - **Potential Risks:** Temporary session revocation, mandatory CAPTCHA challenges, or in severe cases of automated abuse, **suspension/blocking of your Google account**.
-> 
-> #### 🛡️ Recommended Best Practices:
-> 1. **Option A: Use Guest / Incognito Cookies (Zero Account Risk & Longest Lasting)**:
->    - Open an **Incognito / Private browser window** where you are **not** logged into any Google account.
->    - Go to [youtube.com](https://www.youtube.com).
->    - Export cookies (these contain only `VISITOR_INFO1_LIVE`, `YSC`, `PREF`).
->    - Because these are unauthenticated guest cookies, there is **zero risk to your personal Google account**, and Google will **never rotate or revoke `*PSIDTS` tokens**. These cookies last for months!
-> 2. **Option B: Use a Dedicated Throwaway / Secondary Google Account**:
->    - Create a secondary Google account specifically for downloading.
->    - Log in to that account on a dedicated browser profile that you do not actively use for daily browsing.
->    - Export those cookies when downloading age-restricted or member-only videos.
+> - If you download videos in bulk or trigger rate limits, Google's automated anti-abuse algorithms may flag the activity as automated scraping.
+> - **High-Risk Consequences:** Session revocation, mandatory CAPTCHA challenges, or in severe cases of automated abuse, **permanent suspension or deletion of your Google account**.
+> - **Rule of Thumb:** **Always create and use a dedicated throwaway / secondary Google account** created specifically for downloading. Never expose your personal email, Google Drive, or primary workspace account!
 
 ---
 
-### 📥 Step-by-Step: How to Export Cookies (Netscape Format)
+### 📥 Step-by-Step: Exporting Cookies via Incognito
 
-1. **Install a Cookie Exporter Extension** in your browser:
-   - [Cookie-Editor](https://cookie-editor.com/) (Chrome, Firefox, Edge, Safari)
-   - or [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
-2. **Open YouTube** ([youtube.com](https://www.youtube.com)):
-   - Browse in Incognito for risk-free guest cookies, or log in with your dedicated secondary account.
-3. **Export Cookies**:
-   - Click the extension icon in your browser toolbar.
-   - Click **Export** &rarr; select **Export as Netscape** (or click "Export" in *Get cookies.txt LOCALLY*).
-   - This copies a text block starting with `# Netscape HTTP Cookie File` to your clipboard.
-4. **Import into YTDL Downloader**:
-   - In the YTDL Downloader web interface, go to **Settings &rarr; Cookies & Accounts**.
+> [!IMPORTANT]
+> **Why Unauthenticated Incognito Only Shows 360p:**
+> If you export cookies from Incognito *without* logging in, YouTube classifies the connection as an anonymous guest and caps formats to **360p**.
+> 
+> To unlock **4K (2160p), 1440p, 1080p, and high-bitrate audio**, you must sign into a Google account inside Incognito following the steps below.
+
+#### Recommended Extension: "Get cookies.txt LOCALLY"
+We strongly recommend **[Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)** over *Cookie-Editor*. Extensions like *Cookie-Editor* often only export ~14 basic cookies, missing vital authentication and security tokens. **Get cookies.txt LOCALLY** exports the complete Netscape cookie jar with all 50+ essential cookies (including `LOGIN_INFO`, `SID`, `HSID`, `SSID`, `SAPISID`, and `*PSIDTS`).
+
+#### The Exact 5-Step Incognito Workflow:
+1. **Enable the Extension in Incognito**:
+   - In Chrome, go to `chrome://extensions`, find **Get cookies.txt LOCALLY** &rarr; **Details**, and toggle **"Allow in Incognito"** to **ON**.
+2. **Open an Incognito / Private Window**:
+   - Press `Ctrl+Shift+N` (or `Cmd+Shift+N` on Mac).
+3. **Sign In to Your Secondary / Throwaway Account**:
+   - Navigate to [youtube.com](https://www.youtube.com) and sign in using your **disposable/secondary Google account**.
+4. **Export the Netscape Cookies**:
+   - Click the **Get cookies.txt LOCALLY** icon in the toolbar.
+   - Click **Export** &rarr; copy the Netscape formatted text (starts with `# Netscape HTTP Cookie File`).
+   - Close the Incognito window (closing the window stops Chrome from actively rotating session tokens in the background, keeping the exported cookies stable!).
+5. **Import into YTDL Downloader**:
+   - Open YTDL Downloader &rarr; **Settings &rarr; Cookies & Accounts**.
    - Make sure **Enable Cookies** is toggled **ON**.
    - Click **Add Site Cookie**, select `youtube.com`, paste the Netscape cookie text into the box, and click **Save**.
 
