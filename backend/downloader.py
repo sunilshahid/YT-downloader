@@ -1749,6 +1749,18 @@ def _apply_js_engine(opts: dict, settings: AppSettings):
         youtube_args.append(f"js_engine={engine}")
 
     opts["extractor_args"]["youtube"] = youtube_args
+
+    # Configure core js_runtimes in ydl_opts
+    # By default yt-dlp only enables 'deno'. Enabling both deno and node allows yt-dlp
+    # to seamlessly decipher YouTube player challenges using whichever runtime is present.
+    js_runtimes_dict = {}
+    if shutil.which("deno"):
+        js_runtimes_dict["deno"] = {}
+    if shutil.which("node") or shutil.which("nodejs"):
+        js_runtimes_dict["node"] = {}
+    if not js_runtimes_dict:
+        js_runtimes_dict = {"deno": {}, "node": {}}
+    opts["js_runtimes"] = js_runtimes_dict
     opts["remote_components"] = ["ejs:github"]
 
     try:
@@ -2538,6 +2550,14 @@ def generate_ytdlp_cli_command(opts: dict, clean_url: str, request: DownloadRequ
                     cmd_args.extend(["--extractor-args", f'"{ext_key}:{";".join(sub_parts)}"'])
             elif isinstance(sub_val, str):
                 cmd_args.extend(["--extractor-args", f'"{ext_key}:{sub_val}"'])
+
+    # JavaScript Runtimes & Remote Components
+    if opts.get("js_runtimes"):
+        for rt in opts["js_runtimes"].keys():
+            cmd_args.extend(["--js-runtimes", rt])
+    if opts.get("remote_components"):
+        for rc in opts["remote_components"]:
+            cmd_args.extend(["--remote-components", rc])
 
     # Retries and Fragments
     if opts.get("concurrent_fragment_downloads"):
