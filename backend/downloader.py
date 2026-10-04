@@ -1625,41 +1625,42 @@ def fetch_formats_sync(url: str) -> VideoInfo:
     safe_stderr = open(os.devnull, 'w')
     sys.stderr = safe_stderr
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl._out_files.error = safe_stderr
-            info = ydl.extract_info(clean_url, download=False)
-    except Exception as e:
-        last_error = str(e)
-        logger.warning(f"Primary format extraction failed: {e}")
-    finally:
-        sys.stderr = original_stderr
         try:
-            safe_stderr.close()
-        except Exception:
-            pass
-            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl._out_files.error = safe_stderr
+                info = ydl.extract_info(clean_url, download=False)
+        except Exception as e:
+            last_error = str(e)
+            logger.warning(f"Primary format extraction failed: {e}")
+        finally:
+            sys.stderr = original_stderr
+            try:
+                safe_stderr.close()
+            except Exception:
+                pass
+
+        # Automatic fallback for YouTube if blocked by BotGuard on datacenter/VPS IPs
+        if not info and ("youtube.com" in clean_url or "youtu.be" in clean_url):
+            logger.info("Attempting fallback YouTube player clients (android,mweb)...")
+            fb_opts = dict(ydl_opts)
+            fb_opts["ignoreerrors"] = False
+            fb_args = dict(fb_opts.get("extractor_args", {}))
+            fb_args["youtube"] = [
+                "player_client=android,mweb,web"
+            ]
+            fb_opts["extractor_args"] = fb_args
+            try:
+                with yt_dlp.YoutubeDL(fb_opts) as ydl:
+                    info = ydl.extract_info(clean_url, download=False)
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"Fallback format extraction failed: {e}")
+    finally:
         if cookie_temp_path and os.path.exists(cookie_temp_path):
             try:
                 os.unlink(cookie_temp_path)
             except OSError:
                 pass
-
-    # Automatic fallback for YouTube if blocked by BotGuard on datacenter/VPS IPs
-    if not info and ("youtube.com" in clean_url or "youtu.be" in clean_url):
-        logger.info("Attempting fallback YouTube player clients (android,mweb)...")
-        fb_opts = dict(ydl_opts)
-        fb_opts["ignoreerrors"] = False
-        fb_args = dict(fb_opts.get("extractor_args", {}))
-        fb_args["youtube"] = [
-            "player_client=android,mweb,web"
-        ]
-        fb_opts["extractor_args"] = fb_args
-        try:
-            with yt_dlp.YoutubeDL(fb_opts) as ydl:
-                info = ydl.extract_info(clean_url, download=False)
-        except Exception as e:
-            last_error = str(e)
-            logger.warning(f"Fallback format extraction failed: {e}")
 
     if not info:
         err_msg = last_error or "Unknown error"
