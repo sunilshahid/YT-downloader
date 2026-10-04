@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 const API_BASE = typeof window !== 'undefined' && window.location 
-  ? `${window.location.protocol}//${window.location.hostname}:8000` 
+  ? (window.location.port === '5173' ? `${window.location.protocol}//${window.location.hostname}:8000` : window.location.origin)
   : 'http://127.0.0.1:8000';
 
 const WS_URL = typeof window !== 'undefined' && window.location 
-  ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:8000/ws/progress` 
+  ? (window.location.port === '5173'
+      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:8000/ws/progress`
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/progress`)
   : 'ws://127.0.0.1:8000/ws/progress';
 
 export default function useWebSocket() {

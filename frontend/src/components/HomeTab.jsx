@@ -5,7 +5,9 @@ import FormatSelector, { calculateDownloadSize } from './FormatSelector';
 import CustomDateTimePicker from './CustomDateTimePicker';
 import IncognitoIcon from './IncognitoIcon';
 
-const API_BASE = typeof window !== 'undefined' && window.location ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://127.0.0.1:8000';
+const API_BASE = typeof window !== 'undefined' && window.location 
+  ? (window.location.port === '5173' ? `${window.location.protocol}//${window.location.hostname}:8000` : window.location.origin)
+  : 'http://127.0.0.1:8000';
 
 export default function HomeTab({ settings, onNavigate }) {
   const [url, setUrl] = useState('');
