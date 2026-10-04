@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: sunilshahid/yt-downloader:latest
     container_name: yt-downloader
     ports:
       - "8000:8000"
