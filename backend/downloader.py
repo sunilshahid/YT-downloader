@@ -1565,7 +1565,7 @@ def fetch_formats_sync(url: str) -> VideoInfo:
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": True,
-        "ignoreerrors": True,
+        "ignoreerrors": False,
         "retries": getattr(settings, "auto_retry_count", None) or getattr(settings, "retries", 3),
         "socket_timeout": getattr(settings, "socket_timeout", 30),
         "logger": YtDlpLogger(download_id=download_id) if 'download_id' in locals() and download_id else YtDlpLogger(),
@@ -1609,6 +1609,8 @@ def fetch_formats_sync(url: str) -> VideoInfo:
     
     logger.info(f"Fetching formats for normalized URL: {clean_url}")
     
+    info = None
+    last_error = None
     import io
     original_stderr = sys.stderr
     safe_stderr = open(os.devnull, 'w')
@@ -1617,6 +1619,9 @@ def fetch_formats_sync(url: str) -> VideoInfo:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl._out_files.error = safe_stderr
             info = ydl.extract_info(clean_url, download=False)
+    except Exception as e:
+        last_error = str(e)
+        logger.warning(f"Primary format extraction failed: {e}")
     finally:
         sys.stderr = original_stderr
         try:
@@ -1629,7 +1634,30 @@ def fetch_formats_sync(url: str) -> VideoInfo:
                 os.unlink(cookie_temp_path)
             except OSError:
                 pass
-    
+
+    # Automatic fallback for YouTube if blocked by BotGuard on datacenter/VPS IPs
+    if not info and ("youtube.com" in clean_url or "youtu.be" in clean_url):
+        logger.info("Attempting fallback YouTube player clients (android,mweb)...")
+        fb_opts = dict(ydl_opts)
+        fb_opts["ignoreerrors"] = False
+        fb_args = dict(fb_opts.get("extractor_args", {}))
+        fb_args["youtube"] = [
+            "player_client=android,mweb,web"
+        ]
+        fb_opts["extractor_args"] = fb_args
+        try:
+            with yt_dlp.YoutubeDL(fb_opts) as ydl:
+                info = ydl.extract_info(clean_url, download=False)
+        except Exception as e:
+            last_error = str(e)
+            logger.warning(f"Fallback format extraction failed: {e}")
+
+    if not info:
+        err_msg = last_error or "Unknown error"
+        if "Sign in to confirm" in err_msg or "bot" in err_msg.lower():
+            raise Exception("YouTube is requesting bot verification ('Sign in to confirm you’re not a bot'). To resolve this: import your YouTube cookies under Settings -> Cookies & Accounts, or enable Proof of Origin (PO Token).")
+        raise Exception(f"Could not retrieve video information: {err_msg}")
+
     raw_formats = info.get("formats", [])
     parsed_formats = [_parse_format(f) for f in raw_formats]
     parsed_formats = [
@@ -1682,18 +1710,35 @@ async def fetch_formats(url: str) -> VideoInfo:
 
 def _apply_js_engine(opts: dict, settings: AppSettings):
     """Apply JS engine setting, EJS solver script, and client rotation to yt-dlp options."""
+    import shutil
     engine_map = {
         JsEngine.DENO: "deno",
         JsEngine.NODEJS: "nodejs",
         JsEngine.PHANTOMJS: "phantomjs",
     }
-    engine = engine_map.get(settings.js_engine, "deno")
+    raw_engine = engine_map.get(settings.js_engine, "nodejs")
+    engine = raw_engine
+    if engine == "deno" and not shutil.which("deno"):
+        if shutil.which("node") or shutil.which("nodejs"):
+            engine = "nodejs"
+        else:
+            engine = None
+    elif engine == "nodejs" and not (shutil.which("node") or shutil.which("nodejs")):
+        if shutil.which("deno"):
+            engine = "deno"
+        else:
+            engine = None
+
     if "extractor_args" not in opts:
         opts["extractor_args"] = {}
-    opts["extractor_args"]["youtube"] = [
-        "player_client=ios,android,mweb,tv_embedded,web",
-        f"js_engine={engine}"
+
+    youtube_args = [
+        "player_client=android,mweb,web,tv_embedded"
     ]
+    if engine:
+        youtube_args.append(f"js_engine={engine}")
+
+    opts["extractor_args"]["youtube"] = youtube_args
     opts["remote_components"] = ["ejs:github"]
 
     try:
@@ -2561,7 +2606,7 @@ def log_session_header(download_id: str, request: DownloadRequest, settings: App
     has_visitor = bool(po_cfg and po_cfg.visitor_data)
     po_summary = f"Mode: [{po_mode}] | VisitorData: {'Present' if has_visitor else 'None'}"
 
-    clients_list = ["ios", "android", "mweb", "web"]
+    clients_list = ["android", "mweb", "web", "ios"]
     if po_cfg and getattr(po_cfg, "player_clients", None):
         clients_list = po_cfg.player_clients
     clients_str = ", ".join(clients_list)

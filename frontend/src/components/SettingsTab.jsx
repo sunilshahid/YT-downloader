@@ -2072,12 +2072,12 @@ export default function SettingsTab({
           <SelectField
             label="JavaScript Engine"
             description="Runtime used by yt-dlp to solve YouTube n-sig algorithms"
-            value={settings?.js_engine || 'deno'}
+            value={settings?.js_engine || 'nodejs'}
             onChange={(v) => updateSetting('js_engine', v)}
             options={[
-              { label: 'Deno (Fastest & Recommended)', value: 'deno' },
-              { label: 'QuickJS (Bundled Lightweight)', value: 'quickjs' },
-              { label: 'Node.js (Standard Node)', value: 'node' },
+              { label: 'Node.js (Standard Node - Container Default)', value: 'nodejs' },
+              { label: 'Deno (Fastest)', value: 'deno' },
+              { label: 'PhantomJS (Legacy)', value: 'phantomjs' },
             ]}
             icon={Cpu}
           />
@@ -3903,11 +3903,11 @@ export default function SettingsTab({
           id="setting-js_engine"
           label="JavaScript Engine"
           description="Used by yt-dlp to solve YouTube PO (Proof of Origin) botguard tokens"
-          value={settings?.js_engine || 'deno'}
+          value={settings?.js_engine || 'nodejs'}
           onChange={(v) => updateSetting('js_engine', v)}
           options={[
-            { label: 'Deno (Fastest & sandboxed - Recommended)', value: 'deno' },
-            { label: 'NodeJS (System node runtime)', value: 'nodejs' },
+            { label: 'NodeJS (System node runtime - Container Default)', value: 'nodejs' },
+            { label: 'Deno (Fastest & sandboxed)', value: 'deno' },
             { label: 'PhantomJS (Legacy)', value: 'phantomjs' },
           ]}
           icon={Cpu}

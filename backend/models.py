@@ -209,7 +209,7 @@ class YoutubePoTokenSettings(BaseModel):
     enabled: bool = False
     mode: str = "no_auth"  # 'bgutil_http' | 'no_auth' | 'auth_cookie' | 'manual'
     bgutil_base_url: str = "http://127.0.0.1:4416"
-    player_clients: List[str] = ["ios", "android", "mweb", "web"]
+    player_clients: List[str] = ["android", "mweb", "web", "ios"]
     use_only_po_token: bool = False
     gvs_token: Optional[str] = ""
     player_token: Optional[str] = ""
@@ -307,7 +307,7 @@ class AppSettings(BaseModel):
     auto_update_ytdlp: bool = False
     ytdlp_channel: str = "stable"
     ytdlp_release_channel: Optional[str] = None  # Backward-compatible alias
-    js_engine: JsEngine = JsEngine.DENO
+    js_engine: JsEngine = JsEngine.NODEJS
 
     # YouTube Proof of Origin (PO Token)
     potoken_settings: YoutubePoTokenSettings = Field(default_factory=YoutubePoTokenSettings)

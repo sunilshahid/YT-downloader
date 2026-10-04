@@ -302,9 +302,9 @@ def apply_po_token_args(opts: Dict[str, Any], settings: Any) -> Dict[str, Any]:
         opts["extractor_args"] = {}
 
     mode = getattr(po_cfg, "mode", "no_auth")
-    clients = getattr(po_cfg, "player_clients", ["ios", "android", "mweb", "web"])
+    clients = getattr(po_cfg, "player_clients", ["android", "mweb", "web", "ios"])
     if not clients:
-        clients = ["ios", "android", "mweb", "web"]
+        clients = ["android", "mweb", "web", "ios"]
     
     use_only_po = getattr(po_cfg, "use_only_po_token", False)
 
